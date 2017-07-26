@@ -39,6 +39,16 @@ import org.wso2.carbon.user.core.util.DatabaseUtil;
 import org.wso2.carbon.user.core.util.JNDIUtil;
 import org.wso2.carbon.user.core.util.UserCoreUtil;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Random;
+import java.util.StringTokenizer;
+import javax.naming.CompositeName;
+import javax.naming.InvalidNameException;
 import javax.naming.Name;
 import javax.naming.NameParser;
 import javax.naming.NamingEnumeration;
@@ -54,14 +64,6 @@ import javax.naming.directory.NoSuchAttributeException;
 import javax.naming.directory.SearchControls;
 import javax.naming.directory.SearchResult;
 import javax.sql.DataSource;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Random;
-import java.util.StringTokenizer;
 
 /**
  * This class is capable of get connected to an external or internal LDAP based user store in
@@ -99,6 +101,10 @@ public class ReadWriteLDAPUserStoreManager extends ReadOnlyLDAPUserStoreManager 
     protected Random random = new Random();
 
     protected boolean kdcEnabled = false;
+
+    static {
+        setAdvancedProperties();
+    }
 
     public ReadWriteLDAPUserStoreManager() {
 
@@ -548,8 +554,8 @@ public class ReadWriteLDAPUserStoreManager extends ReadOnlyLDAPUserStoreManager 
                     searchFilter = ((LDAPRoleContext) context).getSearchFilter();
                     role = context.getRoleName();
 
-                    if (role.indexOf("/") > -1) {
-                        role = (role.split("/"))[1];
+                    if (role.indexOf(CarbonConstants.DOMAIN_SEPARATOR) > -1) {
+                        role = (role.split(CarbonConstants.DOMAIN_SEPARATOR))[1];
                     }
                     String grpSearchFilter = searchFilter.replace("?", escapeSpecialCharactersForFilter(role));
                     groupResults =
@@ -2000,6 +2006,8 @@ public class ReadWriteLDAPUserStoreManager extends ReadOnlyLDAPUserStoreManager 
                 "Name of the class that implements the count functionality");
         setAdvancedProperty(LDAPConstants.LDAP_ATTRIBUTES_BINARY, "LDAP binary attributes", " ",
                 LDAPBinaryAttributesDescription);
+        setAdvancedProperty(UserStoreConfigConstants.claimOperationsSupported, UserStoreConfigConstants
+                .getClaimOperationsSupportedDisplayName, "true", UserStoreConfigConstants.claimOperationsSupportedDescription);
     }
 
 //
@@ -2059,7 +2067,6 @@ public class ReadWriteLDAPUserStoreManager extends ReadOnlyLDAPUserStoreManager 
                 (new Property[ReadWriteLDAPUserStoreConstants.RWLDAP_USERSTORE_PROPERTIES.size()]));
         properties.setOptionalProperties(ReadWriteLDAPUserStoreConstants.OPTINAL_RWLDAP_USERSTORE_PROPERTIES.toArray
                 (new Property[ReadWriteLDAPUserStoreConstants.OPTINAL_RWLDAP_USERSTORE_PROPERTIES.size()]));
-        setAdvancedProperties();
         properties.setAdvancedProperties(RW_LDAP_UM_ADVANCED_PROPERTIES.toArray
                 (new Property[RW_LDAP_UM_ADVANCED_PROPERTIES.size()]));
         return properties;
@@ -2301,28 +2308,12 @@ public class ReadWriteLDAPUserStoreManager extends ReadOnlyLDAPUserStoreManager 
     /**
      * This method performs the additional level escaping for ldap search. In ldap search / and " characters
      * have to be escaped again
-     * @param dn
-     * @return
+     * @param dn DN
+     * @return composite name
+     * @throws InvalidNameException failed to build composite name
      */
-    private String escapeDNForSearch(String dn){
-        boolean replaceEscapeCharacters = true;
-
-        String replaceEscapeCharactersAtUserLoginString = realmConfig
-                .getUserStoreProperty(UserCoreConstants.RealmConfig.PROPERTY_REPLACE_ESCAPE_CHARACTERS_AT_USER_LOGIN);
-
-        if (replaceEscapeCharactersAtUserLoginString != null) {
-            replaceEscapeCharacters = Boolean
-                    .parseBoolean(replaceEscapeCharactersAtUserLoginString);
-            if (log.isDebugEnabled()) {
-                log.debug("Replace escape characters configured to: "
-                        + replaceEscapeCharactersAtUserLoginString);
-            }
-        }
-        if (replaceEscapeCharacters) {
-            return dn.replace("\\\\", "\\\\\\").replace("\\\"", "\\\\\"");
-        } else {
-            return dn;
-        }
+    private Name escapeDNForSearch(String dn) throws InvalidNameException {
+        return new CompositeName().add(dn);
     }
     private static void setAdvancedProperty(String name, String displayName, String value,
                                             String description) {

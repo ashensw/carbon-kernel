@@ -23,7 +23,6 @@ import org.wso2.carbon.CarbonConstants;
 import org.wso2.carbon.user.api.Properties;
 import org.wso2.carbon.user.api.Property;
 import org.wso2.carbon.user.api.RealmConfiguration;
-import org.wso2.carbon.utils.Secret;
 import org.wso2.carbon.user.core.UserCoreConstants;
 import org.wso2.carbon.user.core.UserRealm;
 import org.wso2.carbon.user.core.UserStoreConfigConstants;
@@ -31,8 +30,13 @@ import org.wso2.carbon.user.core.UserStoreException;
 import org.wso2.carbon.user.core.claim.ClaimManager;
 import org.wso2.carbon.user.core.profile.ProfileConfigurationManager;
 import org.wso2.carbon.user.core.util.JNDIUtil;
+import org.wso2.carbon.utils.Secret;
 import org.wso2.carbon.utils.UnsupportedSecretTypeException;
 
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.StringTokenizer;
 import javax.naming.Name;
 import javax.naming.NameParser;
 import javax.naming.NamingEnumeration;
@@ -48,11 +52,6 @@ import javax.naming.directory.ModificationItem;
 import javax.naming.directory.NoSuchAttributeException;
 import javax.naming.directory.SearchControls;
 import javax.naming.directory.SearchResult;
-import java.io.UnsupportedEncodingException;
-import java.util.ArrayList;
-import java.nio.charset.StandardCharsets;
-import java.util.Map;
-import java.util.StringTokenizer;
 
 /**
  * This class is responsible for manipulating Microsoft Active Directory(AD)and Active Directory
@@ -77,6 +76,10 @@ public class ActiveDirectoryUserStoreManager extends ReadWriteLDAPUserStoreManag
     private static final String RETRY_ATTEMPTS = "RetryAttempts";
     private static final String LDAPBinaryAttributesDescription = "Configure this to define the LDAP binary attributes " +
             "seperated by a space. Ex:mpegVideo mySpecialKey";
+
+    static {
+        setAdvancedProperties();
+    }
 
     public ActiveDirectoryUserStoreManager() {
 
@@ -705,7 +708,6 @@ public class ActiveDirectoryUserStoreManager extends ReadWriteLDAPUserStoreManag
                 (new Property[ActiveDirectoryUserStoreConstants.ACTIVE_DIRECTORY_UM_PROPERTIES.size()]));
         properties.setOptionalProperties(ActiveDirectoryUserStoreConstants.OPTIONAL_ACTIVE_DIRECTORY_UM_PROPERTIES.toArray
                 (new Property[ActiveDirectoryUserStoreConstants.OPTIONAL_ACTIVE_DIRECTORY_UM_PROPERTIES.size()]));
-        setAdvancedProperties();
         properties.setAdvancedProperties(ACTIVE_DIRECTORY_UM_ADVANCED_PROPERTIES.toArray
                 (new Property[ACTIVE_DIRECTORY_UM_ADVANCED_PROPERTIES.size()]));
         return properties;
@@ -933,6 +935,12 @@ public class ActiveDirectoryUserStoreManager extends ReadWriteLDAPUserStoreManag
                 "Name of the class that implements the count functionality");
         setAdvancedProperty(LDAPConstants.LDAP_ATTRIBUTES_BINARY, "LDAP binary attributes", " ",
                 LDAPBinaryAttributesDescription);
+        setAdvancedProperty(UserStoreConfigConstants.claimOperationsSupported, UserStoreConfigConstants
+                .getClaimOperationsSupportedDisplayName, "true", UserStoreConfigConstants.claimOperationsSupportedDescription);
+        setAdvancedProperty(ActiveDirectoryUserStoreConstants.TRANSFORM_OBJECTGUID_TO_UUID,
+                ActiveDirectoryUserStoreConstants.TRANSFORM_OBJECTGUID_TO_UUID_DESC , "true",
+                ActiveDirectoryUserStoreConstants.TRANSFORM_OBJECTGUID_TO_UUID_DESC);
+
     }
 
 

@@ -91,7 +91,6 @@ public final class UserCoreUtil {
 
         int j = 0;
         for (int i = arr1.length; i < newArray.length; i++) {
-            Arrays.toString(newArray);
             newArray[i] = arr2[j];
             j++;
         }
@@ -659,13 +658,13 @@ public final class UserCoreUtil {
             if ((!userName.equals(displayName)) && (displayName != null)) {
                 userName = domainName + userName;
                 displayName = domainName + displayName;
-                combinedName = userName + UserCoreConstants.NAME_COMBINER + displayName;
+                combinedName = userName + CarbonConstants.NAME_COMBINER + displayName;
             } else {
                 combinedName = domainName + userName;
             }
         } else {
             if (!userName.equals(displayName) && displayName != null) {
-                combinedName = userName + UserCoreConstants.NAME_COMBINER + displayName;
+                combinedName = userName + CarbonConstants.NAME_COMBINER + displayName;
             } else {
                 combinedName = userName;
             }

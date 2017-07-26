@@ -30,6 +30,7 @@ import org.apache.axis2.description.AxisBindingOperation;
 import org.apache.axis2.description.AxisEndpoint;
 import org.apache.axis2.description.AxisOperation;
 import org.apache.axis2.description.AxisService;
+import org.apache.axis2.description.OutOnlyAxisOperation;
 import org.apache.axis2.description.TransportInDescription;
 import org.apache.axis2.description.TransportOutDescription;
 import org.apache.axis2.description.WSDL2Constants;
@@ -46,6 +47,7 @@ import org.apache.axis2.util.Utils;
 import org.apache.axis2.wsdl.WSDLConstants;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.carbon.CarbonConstants;
 import org.wso2.carbon.context.PrivilegedCarbonContext;
 import org.wso2.carbon.core.multitenancy.utils.TenantAxisUtils;
 import org.wso2.carbon.utils.multitenancy.MultitenantConstants;
@@ -57,6 +59,8 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.URL;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
@@ -68,7 +72,9 @@ import java.util.Map;
 public class MultitenantMessageReceiver implements MessageReceiver {
 
     private static final String TENANT_DELIMITER = "/t/";
-	private static final Log log = LogFactory.getLog(MultitenantMessageReceiver.class);                      
+    private static final Log log = LogFactory.getLog(MultitenantMessageReceiver.class);
+    // Parameter to indicate whether request is InOnly request for the tenant
+    private static final String TENANT_IN_ONLY_MESSAGE = "TENANT_IN_ONLY_MESSAGE";
 
     public void receive(MessageContext mainInMsgContext) throws AxisFault {
 
@@ -137,9 +143,12 @@ public class MultitenantMessageReceiver implements MessageReceiver {
                     tenantResponseMsgCtx.setProperty(MessageContext.TRANSPORT_HEADERS,
                                                      mainInMsgContext.getProperty(MessageContext.TRANSPORT_HEADERS));
 
-                    tenantResponseMsgCtx.setAxisMessage(tenantRequestMsgCtx.getOperationContext()
-                                                                           .getAxisOperation()
-                                                                           .getMessage(WSDLConstants.MESSAGE_LABEL_IN_VALUE));
+                    //if OUT_ONLY property is true, no response message. ESBJAVA-3989
+                    if (!(tenantRequestMsgCtx.getOperationContext()
+                            .getAxisOperation() instanceof OutOnlyAxisOperation)) {
+                        tenantResponseMsgCtx.setAxisMessage(tenantRequestMsgCtx.getOperationContext().getAxisOperation()
+                                .getMessage(WSDLConstants.MESSAGE_LABEL_IN_VALUE));
+                    }
 
                     tenantResponseMsgCtx.setOperationContext(tenantRequestMsgCtx.getOperationContext());
                     tenantResponseMsgCtx.setConfigurationContext(tenantRequestMsgCtx.getConfigurationContext());
@@ -311,9 +320,17 @@ public class MultitenantMessageReceiver implements MessageReceiver {
                         responseHeaders);
             }
 
+            // When the request is dispatched to InOut axis2 MessageReciever Out messageContext
+            // needs to be set to OperationContext
             if (mainInMsgContext.getOperationContext() != null && tenantInMsgCtx.getOperationContext() != null) {
-                mainInMsgContext.getOperationContext().setProperty(Constants.RESPONSE_WRITTEN,
-                        tenantInMsgCtx.getOperationContext().getProperty(Constants.RESPONSE_WRITTEN));
+                if (tenantInMsgCtx.getOperationContext().
+                        getMessageContext(WSDLConstants.MESSAGE_LABEL_OUT_VALUE) != null) {
+                    mainInMsgContext.getOperationContext().addMessageContext(tenantInMsgCtx
+                            .getOperationContext().getMessageContext(WSDLConstants.MESSAGE_LABEL_OUT_VALUE));
+                } else {
+                    mainInMsgContext.getOperationContext().setProperty(Constants.RESPONSE_WRITTEN,
+                            tenantInMsgCtx.getOperationContext().getProperty(Constants.RESPONSE_WRITTEN));
+                }
             }
         } catch (AxisFault axisFault) {
             // at a fault flow message receiver throws a fault.
@@ -566,6 +583,13 @@ public class MultitenantMessageReceiver implements MessageReceiver {
             } else {
                 // TODO: throw exception: Invalid verb
             }
+
+            // Need to remove RESPONSE_WRITTEN property if the request is InOnly request to the tenants
+            if (tenantInMsgCtx.getProperty(TENANT_IN_ONLY_MESSAGE) != null &&
+                    Boolean.TRUE.equals(tenantInMsgCtx.getProperty(TENANT_IN_ONLY_MESSAGE))) {
+                mainInMsgContext.getOperationContext().removeProperty(Constants.RESPONSE_WRITTEN);
+            }
+
         } catch (AxisFault axisFault) {
             // at a fault flow message receiver throws a fault.
             // we need to first catch this fault and invoke the fault flow
