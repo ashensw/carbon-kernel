@@ -24,6 +24,7 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.CarbonConstants;
 import org.wso2.carbon.context.CarbonContext;
 import org.wso2.carbon.user.api.RealmConfiguration;
+import org.wso2.carbon.user.core.common.User;
 import org.wso2.carbon.utils.Secret;
 import org.wso2.carbon.user.core.UserCoreConstants;
 import org.wso2.carbon.user.core.UserStoreException;
@@ -50,6 +51,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -1091,4 +1093,59 @@ public final class UserCoreUtil {
 
         Arrays.fill(bytes, (byte) 0);
     }
+
+    /**
+     * provides the unique user ID of the user.
+     *
+     * @return unique user ID
+     */
+    public static String getUserID() {
+        return UUID.randomUUID().toString();
+    }
+
+    public static List<String> getAttributesList(User[] userList, String attributeName) {
+        List<String> attributesList = new ArrayList<>();
+        for (User user : userList) {
+            attributesList.add((user.getAttributes()).get(attributeName));
+        }
+        return attributesList;
+
+    }
+
+    public static List<String> getUserNamesList(User[] userList) {
+        List<String> userNamesList = new ArrayList<>();
+        for (User user : userList) {
+            userNamesList.add((user.getUsername()));
+        }
+        return userNamesList;
+    }
+
+    public static List<String> getUserNamesList(List<User> userList) {
+        List<String> userNamesList = new ArrayList<>();
+        for (User user : userList) {
+            userNamesList.add((user.getUsername()));
+        }
+        return userNamesList;
+    }
+
+    public static List<User> getUserList(String[] userList) {
+        List<User> usersList = new ArrayList<>();
+        for (String username : userList) {
+            User user = new User();
+            user.setUsername(username);
+            usersList.add((user));
+        }
+        return usersList;
+    }
+
+    // TODO: read a config
+    public static boolean isUniqueUserIDFeatureEnabled() {
+        return true;
+    }
+
+    // TODO: read a config
+    public static boolean isNewEventListenersEnabled() {
+        return true;
+    }
+
 }

@@ -22,11 +22,11 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.CarbonConstants;
-import org.wso2.carbon.base.ServerConfiguration;
 import org.wso2.carbon.context.CarbonContext;
 import org.wso2.carbon.user.api.RealmConfiguration;
 import org.wso2.carbon.user.core.PaginatedUserStoreManager;
 import org.wso2.carbon.user.core.Permission;
+import org.wso2.carbon.user.core.UniqueIDUserStoreManager;
 import org.wso2.carbon.user.core.UserCoreConstants;
 import org.wso2.carbon.user.core.UserRealm;
 import org.wso2.carbon.user.core.UserStoreConfigConstants;
@@ -81,6 +81,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 import javax.sql.DataSource;
 
 import static org.wso2.carbon.user.core.constants.UserCoreErrorConstants.ErrorMessages.ERROR_CODE_DUPLICATE_WHILE_ADDING_A_HYBRID_ROLE;
@@ -89,7 +90,8 @@ import static org.wso2.carbon.user.core.constants.UserCoreErrorConstants.ErrorMe
 import static org.wso2.carbon.user.core.constants.UserCoreErrorConstants.ErrorMessages.ERROR_CODE_DUPLICATE_WHILE_ADDING_A_USER;
 import static org.wso2.carbon.user.core.constants.UserCoreErrorConstants.ErrorMessages.ERROR_CODE_DUPLICATE_WHILE_ADDING_ROLE;
 
-public abstract class AbstractUserStoreManager implements UserStoreManager, PaginatedUserStoreManager {
+public abstract class AbstractUserStoreManager implements PaginatedUserStoreManager,
+        UniqueIDUserStoreManager {
 
     protected static final String TRUE_VALUE = "true";
     protected static final String FALSE_VALUE = "false";
@@ -224,6 +226,21 @@ public abstract class AbstractUserStoreManager implements UserStoreManager, Pagi
     protected abstract boolean doCheckExistingUser(String userName) throws UserStoreException;
 
     /**
+     * Check whether the userID exists in the system.
+     *
+     * @param userID user ID.
+     * @return Whether the user is existing in the userstore.
+     * @throws UserStoreException Thrown by the underlying UserStoreManager.
+     */
+    protected boolean doCheckExistingUserWithID(String userID) throws UserStoreException {
+
+        if (log.isDebugEnabled()) {
+            log.debug("Operation is not supported in: " + this.getClass());
+        }
+        return false;
+    }
+
+    /**
      * Retrieves a list of user names for given user's property in user profile
      *
      * @param property    user property in user profile
@@ -250,6 +267,27 @@ public abstract class AbstractUserStoreManager implements UserStoreManager, Pagi
             throws UserStoreException;
 
     /**
+     * Given the preferred user name and a credential object, the implementation code must
+     * validate whether the user is authenticated.
+     *
+     * @param preferredUserNameProperty The preferred user name property
+     * @param preferredUserNameValue    The preferred user name value
+     * @param credential                The credential of a user
+     * @return If the value is true the provided credential match with the user
+     * name. False is returned for invalid credential, invalid user name
+     * and mismatching credential with user name.
+     * @throws UserStoreException An unexpected exception has occurred
+     */
+    protected User doAuthenticate(String preferredUserNameProperty, String preferredUserNameValue, Object credential,
+            String profileName) throws UserStoreException {
+
+        if (log.isDebugEnabled()) {
+            log.debug("Operation is not supported in: " + this.getClass());
+        }
+        return new User();
+    }
+
+    /**
      * Add a user to the user store.
      *
      * @param userName              User name of the user
@@ -260,7 +298,7 @@ public abstract class AbstractUserStoreManager implements UserStoreManager, Pagi
      * @param requirePasswordChange whether password required is need
      * @throws UserStoreException An unexpected exception has occurred
      */
-    protected abstract void  doAddUser(String userName, Object credential, String[] roleList,
+    protected abstract void doAddUser(String userName, Object credential, String[] roleList,
                                       Map<String, String> claims, String profileName, boolean requirePasswordChange)
             throws UserStoreException;
 
@@ -276,6 +314,23 @@ public abstract class AbstractUserStoreManager implements UserStoreManager, Pagi
                                                Object oldCredential) throws UserStoreException;
 
     /**
+     * Update the credential/password of the user.
+     *
+     * @param userID        The user ID
+     * @param newCredential The new credential/password
+     * @param oldCredential The old credential/password
+     * @throws UserStoreException An unexpected exception has occurred
+     */
+    protected void doUpdateCredentialWithID(String userID, Object newCredential, Object oldCredential)
+            throws UserStoreException {
+
+        if (log.isDebugEnabled()) {
+            log.debug("Operation is not supported in: " + this.getClass());
+        }
+        // Do nothing.
+    }
+
+    /**
      * Update credential/password by the admin of another user
      *
      * @param userName      The user name
@@ -286,12 +341,41 @@ public abstract class AbstractUserStoreManager implements UserStoreManager, Pagi
             throws UserStoreException;
 
     /**
+     * Update credential/password by the admin of another user.
+     *
+     * @param userID        The user ID
+     * @param newCredential The new credential
+     * @throws UserStoreException An unexpected exception has occurred
+     */
+    protected void doUpdateCredentialByAdminWithID(String userID, Object newCredential) throws UserStoreException {
+
+        if (log.isDebugEnabled()) {
+            log.debug("Operation is not supported in: " + this.getClass());
+        }
+        // Do nothing.
+    }
+
+    /**
      * Delete the user with the given user name
      *
      * @param userName The user name
      * @throws UserStoreException An unexpected exception has occurred
      */
     protected abstract void doDeleteUser(String userName) throws UserStoreException;
+
+    /**
+     * Delete the user with the given user name.
+     *
+     * @param userID The user name
+     * @throws UserStoreException An unexpected exception has occurred
+     */
+    protected void doDeleteUserWithID(String userID) throws UserStoreException {
+
+        if (log.isDebugEnabled()) {
+            log.debug("Operation is not supported in: " + this.getClass());
+        }
+        // Do nothing.
+    }
 
     /**
      * Set a single user claim value
@@ -306,6 +390,24 @@ public abstract class AbstractUserStoreManager implements UserStoreManager, Pagi
                                                 String claimValue, String profileName) throws UserStoreException;
 
     /**
+     * Set a single user claim value.
+     *
+     * @param userID      The user ID
+     * @param claimURI    The claim URI
+     * @param claimValue  The value
+     * @param profileName The profile name, can be null. If null the default profile is considered.
+     * @throws UserStoreException An unexpected exception has occurred
+     */
+    protected void doSetUserClaimValueWithID(String userID, String claimURI, String claimValue, String profileName)
+            throws UserStoreException {
+
+        if (log.isDebugEnabled()) {
+            log.debug("Operation is not supported in: " + this.getClass());
+        }
+        // Do nothing.
+    }
+
+    /**
      * Set many user claim values
      *
      * @param userName    The user name
@@ -317,7 +419,24 @@ public abstract class AbstractUserStoreManager implements UserStoreManager, Pagi
                                                  String profileName) throws UserStoreException;
 
     /**
-     * o * Delete a single user claim value
+     * Set many user claim values.
+     *
+     * @param userID      The user ID
+     * @param claims      Map of claim URIs against values
+     * @param profileName The profile name, can be null. If null the default profile is considered.
+     * @throws UserStoreException An unexpected exception has occurred
+     */
+    protected void doSetUserClaimValuesWithID(String userID, Map<String, String> claims, String profileName)
+            throws UserStoreException {
+
+        if (log.isDebugEnabled()) {
+            log.debug("Operation is not supported in: " + this.getClass());
+        }
+        // Do nothing.
+    }
+
+    /**
+     * Delete a single user claim value
      *
      * @param userName    The user name
      * @param claimURI    Name of the claim
@@ -326,6 +445,23 @@ public abstract class AbstractUserStoreManager implements UserStoreManager, Pagi
      */
     protected abstract void doDeleteUserClaimValue(String userName, String claimURI,
                                                    String profileName) throws UserStoreException;
+
+    /**
+     * Delete a single user claim value
+     *
+     * @param userID      The user ID
+     * @param claimURI    Name of the claim
+     * @param profileName The profile name, can be null. If null the default profile is considered.
+     * @throws UserStoreException An unexpected exception has occurred
+     */
+    protected void doDeleteUserClaimValueWithID(String userID, String claimURI, String profileName)
+            throws UserStoreException {
+
+        if (log.isDebugEnabled()) {
+            log.debug("Operation is not supported in: " + this.getClass());
+        }
+        // Do nothing.
+    }
 
     /**
      * Delete many user claim values.
@@ -339,6 +475,23 @@ public abstract class AbstractUserStoreManager implements UserStoreManager, Pagi
                                                     String profileName) throws UserStoreException;
 
     /**
+     * Delete many user claim values.
+     *
+     * @param userID      The user ID
+     * @param claims      URIs of the claims to be deleted.
+     * @param profileName The profile name, can be null. If null the default profile is considered.
+     * @throws UserStoreException An unexpected exception has occurred
+     */
+    protected void doDeleteUserClaimValuesWithID(String userID, String[] claims, String profileName)
+            throws UserStoreException {
+
+        if (log.isDebugEnabled()) {
+            log.debug("Operation is not supported in: " + this.getClass());
+        }
+        // Do nothing.
+    }
+
+    /**
      * Update user list of a particular role
      *
      * @param roleName     The role name
@@ -350,7 +503,24 @@ public abstract class AbstractUserStoreManager implements UserStoreManager, Pagi
                                                    String[] newUsers) throws UserStoreException;
 
     /**
-     * Update role list of a particular user
+     * Update user list of a particular role.
+     *
+     * @param roleName     The role name
+     * @param deletedUsers Array of user names, that is going to be removed from the role
+     * @param newUsers     Array of user names, that is going to be added to the role
+     * @throws UserStoreException An unexpected exception has occurred
+     */
+    protected void doUpdateUserListOfRoleWithID(String roleName, String[] deletedUsers, String[] newUsers)
+            throws UserStoreException {
+
+        if (log.isDebugEnabled()) {
+            log.debug("Operation is not supported in: " + this.getClass());
+        }
+        // Do nothing.
+    }
+
+    /**
+     * Update role list of a particular user.
      *
      * @param userName     The user name
      * @param deletedRoles Array of role names, that is going to be removed from the user
@@ -359,6 +529,23 @@ public abstract class AbstractUserStoreManager implements UserStoreManager, Pagi
      */
     protected abstract void doUpdateRoleListOfUser(String userName, String[] deletedRoles,
                                                    String[] newRoles) throws UserStoreException;
+
+    /**
+     * Update role list of a particular user.
+     *
+     * @param userID       The user ID
+     * @param deletedRoles Array of role names, that is going to be removed from the user
+     * @param newRoles     Array of role names, that is going to be added to the user
+     * @throws UserStoreException An unexpected exception has occurred
+     */
+    protected void doUpdateRoleListOfUserWithID(String userID, String[] deletedRoles, String[] newRoles)
+            throws UserStoreException {
+
+        if (log.isDebugEnabled()) {
+            log.debug("Operation is not supported in: " + this.getClass());
+        }
+        // Do nothing.
+    }
 
     /**
      * Only gets the internal roles of the user with internal domain name
@@ -483,8 +670,22 @@ public abstract class AbstractUserStoreManager implements UserStoreManager, Pagi
      * @return
      * @throws UserStoreException
      */
-    protected abstract String[] doListUsers(String filter, int maxItemLimit)
+    protected abstract String[]  doListUsers(String filter, int maxItemLimit)
             throws UserStoreException;
+
+    /**
+     * @param filter filter.
+     * @param maxItemLimit max items limit.
+     * @return list of users.
+     * @throws UserStoreException Thrown by the underlying UserStoreManager.
+     */
+    protected User[] doListUsersWithID(String filter, int maxItemLimit) throws UserStoreException {
+
+        if (log.isDebugEnabled()) {
+            log.debug("Operation is not supported in: " + this.getClass());
+        }
+        return new User[0];
+    }
 
     /*This is to get the display names of users in hybrid role according to the underlying user store, to be shown in UI*/
     protected abstract String[] doGetDisplayNamesForInternalRole(String[] userNames)
@@ -545,7 +746,7 @@ public abstract class AbstractUserStoreManager implements UserStoreManager, Pagi
             return AccessController.doPrivileged(new PrivilegedExceptionAction<Boolean>() {
                 @Override
                 public Boolean run() throws Exception {
-                    return authenticateInternal(userName, credential, domainProvided);
+                    return authenticateInternalWithID(userName, credential, domainProvided);
                 }
             });
         } catch (PrivilegedActionException e) {
@@ -577,13 +778,35 @@ public abstract class AbstractUserStoreManager implements UserStoreManager, Pagi
     }
 
     /**
+     * This method is responsible for calling the relevant method from error listeners when there is a failure while
+     * authenticating.
+     *
+     * @param errorCode    Error Code.
+     * @param errorMessage Error Message.
+     * @param userName     Name of the user.
+     * @param credential   Relevant credential provided for authentication.
+     * @throws UserStoreException Exception that will be thrown by relevant listener methods.
+     */
+    private void handleOnAuthenticateFailureWithID(String errorCode, String errorMessage, String userName,
+            Object credential) throws UserStoreException {
+
+        for (UserManagementErrorEventListener listener : UMListenerServiceComponent
+                .getUserManagementErrorEventListeners()) {
+            if (listener.isEnable() && !((AbstractUserManagementErrorListener) listener)
+                    .onAuthenticateFailureWithID(errorCode, errorMessage, userName, credential, this)) {
+                return;
+            }
+        }
+    }
+
+    /**
      * @param userName
      * @param credential
      * @param domainProvided
      * @return
      * @throws UserStoreException
      */
-    private boolean authenticateInternal(String userName, Object credential, boolean domainProvided)
+    private boolean authenticateInternalWithID(String userName, Object credential, boolean domainProvided)
             throws UserStoreException {
 
         boolean authenticated = false;
@@ -763,6 +986,28 @@ public abstract class AbstractUserStoreManager implements UserStoreManager, Pagi
     }
 
     /**
+     * This method calls the relevant methods when there is a failure while trying to get the claim value of a user.
+     *
+     * @param errorCode    Error code.
+     * @param errorMessage Error message.
+     * @param userID       Name of the user.
+     * @param claim        Relevant claim.
+     * @param profileName  Name of the profile.
+     * @throws UserStoreException Exception that will be thrown by relevant listeners.
+     */
+    private void handleGetUserClaimValueFailureWithID(String errorCode, String errorMessage, String userID,
+            String claim, String profileName) throws UserStoreException {
+
+        for (UserManagementErrorEventListener listener : UMListenerServiceComponent
+                .getUserManagementErrorEventListeners()) {
+            if (listener.isEnable() && !((AbstractUserManagementErrorListener) listener)
+                    .onGetUserClaimValueFailureWithID(errorCode, errorMessage, userID, claim, profileName, this)) {
+                return;
+            }
+        }
+    }
+
+    /**
      * {@inheritDoc}
      */
     public final String getUserClaimValue(String userName, String claim, String profileName)
@@ -772,6 +1017,11 @@ public abstract class AbstractUserStoreManager implements UserStoreManager, Pagi
             Class argTypes[] = new Class[]{String.class, String.class, String.class};
             Object object = callSecure("getUserClaimValue", new Object[]{userName, claim, profileName}, argTypes);
             return (String) object;
+        }
+
+        // Get the relevant userID for the given username.
+        if (UserCoreUtil.isUniqueUserIDFeatureEnabled()) {
+            userName = getUserID(UserCoreClaimConstants.USERNAME_CLAIM_URI, userName, null);
         }
 
         UserStore userStore = getUserStore(userName);
@@ -868,6 +1118,29 @@ public abstract class AbstractUserStoreManager implements UserStoreManager, Pagi
     }
 
     /**
+     * This method is responsible for calling relevant listener methods when there is a failure while trying to get
+     * user claim values.
+     *
+     * @param errorCode    Relevant error code.
+     * @param errorMessage Relevant error message.
+     * @param userID     ID of the user.
+     * @param claims       Claims requested.
+     * @param profileName  Name of the profile.
+     * @throws UserStoreException Exception that will be thrown by the relevant listeners.
+     */
+    private void handleGetUserClaimValuesFailureWithID(String errorCode, String errorMessage, String userID,
+            String[] claims, String profileName) throws UserStoreException {
+
+        for (UserManagementErrorEventListener listener : UMListenerServiceComponent
+                .getUserManagementErrorEventListeners()) {
+            if (listener.isEnable() && !((AbstractUserManagementErrorListener) listener)
+                    .onGetUserClaimValuesFailureWithID(errorCode, errorMessage, userID, claims, profileName, this)) {
+                return;
+            }
+        }
+    }
+
+    /**
      * {@inheritDoc}
      */
     public final Claim[] getUserClaimValues(String userName, String profileName)
@@ -877,6 +1150,11 @@ public abstract class AbstractUserStoreManager implements UserStoreManager, Pagi
             Class argTypes[] = new Class[]{String.class, String.class};
             Object object = callSecure("getUserClaimValues", new Object[]{userName, profileName}, argTypes);
             return (Claim[]) object;
+        }
+
+        // Get the relevant userID for the given username.
+        if (UserCoreUtil.isUniqueUserIDFeatureEnabled()) {
+            userName = getUserID(UserCoreClaimConstants.USERNAME_CLAIM_URI, userName, null);
         }
 
         UserStore userStore = getUserStore(userName);
@@ -941,6 +1219,11 @@ public abstract class AbstractUserStoreManager implements UserStoreManager, Pagi
             Class argTypes[] = new Class[]{String.class, String[].class, String.class};
             Object object = callSecure("getUserClaimValues", new Object[]{userName, claims, profileName}, argTypes);
             return (Map<String, String>) object;
+        }
+
+        // Get the relevant userID for the given username.
+        if (UserCoreUtil.isUniqueUserIDFeatureEnabled()) {
+            userName = getUserID(UserCoreClaimConstants.USERNAME_CLAIM_URI, userName, null);
         }
 
         UserStore userStore = getUserStore(userName);
@@ -1018,6 +1301,29 @@ public abstract class AbstractUserStoreManager implements UserStoreManager, Pagi
                 .getUserManagementErrorEventListeners()) {
             if (listener.isEnable() && !listener
                     .onGetUserListFailure(errorCode, errorMessage, claim, claimValue, profileName, this)) {
+                return;
+            }
+        }
+    }
+
+    /**
+     * This method is responsible for calling the relevant methods when there is a failure while trying to get the
+     * user list.
+     *
+     * @param errorCode    Error Code.
+     * @param errorMessage Error Message.
+     * @param claim        Claim URI.
+     * @param claimValue   Claim Value.
+     * @param profileName  Name of the profile.
+     * @throws UserStoreException Exception that will be thrown by relevant listner methods.
+     */
+    private void handleGetUserListFailureWithID(String errorCode, String errorMessage, String claim, String claimValue,
+            String profileName) throws UserStoreException {
+
+        for (UserManagementErrorEventListener listener : UMListenerServiceComponent
+                .getUserManagementErrorEventListeners()) {
+            if (listener.isEnable() && !((AbstractUserManagementErrorListener) listener)
+                    .onGetUserListFailureWithID(errorCode, errorMessage, claim, claimValue, profileName, this)) {
                 return;
             }
         }
@@ -1138,6 +1444,39 @@ public abstract class AbstractUserStoreManager implements UserStoreManager, Pagi
             }
         } catch (UserStoreException ex) {
             handleGetUserListFailure(ErrorMessages.ERROR_CODE_ERROR_DURING_POST_GET_USER_LIST.getCode(),
+                    String.format(ErrorMessages.ERROR_CODE_ERROR_DURING_POST_GET_USER_LIST.getMessage(),
+                            ex.getMessage()), claim, claimValue, null);
+            throw ex;
+        }
+    }
+
+    /**
+     * To call the postGetUserListWithID of relevant listeners.
+     *
+     * @param claim            Claim requested.
+     * @param claimValue       Claim values.
+     * @param filteredUserList List of filtered users.
+     * @param isAuditLogOnly   To indicate whether to call only audit log listener.
+     * @throws UserStoreException User Store Exception.
+     */
+    private void handlePostGetUserListWithID(String claim, String claimValue, User[] filteredUserList,
+            boolean isAuditLogOnly) throws UserStoreException {
+
+        try {
+            for (UserOperationEventListener listener : UMListenerServiceComponent.getUserOperationEventListeners()) {
+                if (listener instanceof AbstractUserOperationEventListener) {
+                    if (isAuditLogOnly && !listener.getClass().getName()
+                            .endsWith(UserCoreErrorConstants.AUDIT_LOGGER_CLASS_NAME)) {
+                        continue;
+                    }
+                    AbstractUserOperationEventListener newListener = (AbstractUserOperationEventListener) listener;
+                    if (!newListener.doPostGetUserListWithID(claim, claimValue, filteredUserList, this)) {
+                        break;
+                    }
+                }
+            }
+        } catch (UserStoreException ex) {
+            handleGetUserListFailureWithID(ErrorMessages.ERROR_CODE_ERROR_DURING_POST_GET_USER_LIST.getCode(),
                     String.format(ErrorMessages.ERROR_CODE_ERROR_DURING_POST_GET_USER_LIST.getMessage(),
                             ex.getMessage()), claim, claimValue, null);
             throw ex;
@@ -1306,11 +1645,50 @@ public abstract class AbstractUserStoreManager implements UserStoreManager, Pagi
      * return the users in all the user-stores recursively
      * {@inheritDoc}
      */
+    @Override
+    public final User[] getUserListWithID(String claim, String claimValue, String profileName)
+            throws UserStoreException {
+
+        String[] userIDs = getUserListInternal(claim, claimValue, profileName);
+        List<User> users = new ArrayList<>();
+        for (String userID : userIDs) {
+            User user = new User();
+            user.setUserID(userID);
+            users.add(user);
+        }
+        return users.toArray(User[]::new);
+    }
+
+    /**
+     * If the claim is domain qualified, search the users respective user store. Else we
+     * return the users in all the user-stores recursively
+     * {@inheritDoc}
+     */
     public final String[] getUserList(String claim, String claimValue, String profileName) throws UserStoreException {
+
+        String[] userList = getUserListInternal(claim, claimValue, profileName);
+        if (UserCoreUtil.isUniqueUserIDFeatureEnabled()) { //TODO: migrated new config
+            List<String> users = new ArrayList<>();
+            for (String userID : userList) {
+                users.add(getUserClaimValueWithID(userID, UserCoreClaimConstants.USERNAME_CLAIM_URI, profileName));
+            }
+            return users.toArray(String[]::new);
+        } else {
+            return userList;
+        }
+    }
+
+
+    /**
+     * If the claim is domain qualified, search the users respective user store. Else we
+     * return the users in all the user-stores recursively
+     * {@inheritDoc}
+     */
+    private final String[] getUserListInternal(String claim, String claimValue, String profileName) throws UserStoreException {
 
         if (!isSecureCall.get()) {
             Class argTypes[] = new Class[]{String.class, String.class, String.class};
-            Object object = callSecure("getUserList", new Object[]{claim, claimValue, profileName}, argTypes);
+            Object object = callSecure("getUserListInternal", new Object[]{claim, claimValue, profileName}, argTypes);
             return (String[]) object;
         }
 
@@ -1678,11 +2056,38 @@ public abstract class AbstractUserStoreManager implements UserStoreManager, Pagi
      *
      * @param errorCode     Relevant error code.
      * @param errorMessage  Error message.
+     * @param userID        ID of the user.
+     * @param newCredential New credential.
+     * @param oldCredential Old credential.
+     */
+    private void handleUpdateCredentialFailureWithID(String errorCode, String errorMessage, String userID,
+            Object newCredential, Object oldCredential) throws UserStoreException {
+
+        if (UserCoreUtil.isNewEventListenersEnabled()) {
+            handleUpdateCredentialFailureInternal(errorCode, errorMessage, userID, newCredential, oldCredential);
+        } else {
+            handleUpdateCredentialFailureInternal(errorCode, errorMessage,
+                    getUserClaimValueWithID(userID, UserCoreClaimConstants.USERNAME_CLAIM_URI, null), newCredential,
+                    oldCredential);
+        }
+    }
+
+    /**
+     * This method calls the relevant listener methods when there is a failure while trying to update credentials.
+     *
+     * @param errorCode     Relevant error code.
+     * @param errorMessage  Error message.
      * @param userName      Name of the user.
      * @param newCredential New credential.
      * @param oldCredential Old credential.
      */
     private void handleUpdateCredentialFailure(String errorCode, String errorMessage, String userName,
+            Object newCredential, Object oldCredential) throws UserStoreException {
+
+        handleUpdateCredentialFailureInternal(errorCode, errorMessage, userName, newCredential, oldCredential);
+    }
+
+    private void handleUpdateCredentialFailureInternal(String errorCode, String errorMessage, String userName,
             Object newCredential, Object oldCredential) throws UserStoreException {
 
         for (UserManagementErrorEventListener listener : UMListenerServiceComponent
@@ -1704,6 +2109,11 @@ public abstract class AbstractUserStoreManager implements UserStoreManager, Pagi
             Class argTypes[] = new Class[]{String.class, Object.class, Object.class};
             callSecure("updateCredential", new Object[]{userName, newCredential, oldCredential}, argTypes);
             return;
+        }
+
+        // Get the relevant userID for the given username.
+        if (UserCoreUtil.isUniqueUserIDFeatureEnabled()) {
+            userName = getUserID(UserCoreClaimConstants.USERNAME_CLAIM_URI, userName, null);
         }
 
         UserStore userStore = getUserStore(userName);
@@ -1894,6 +2304,27 @@ public abstract class AbstractUserStoreManager implements UserStoreManager, Pagi
     }
 
     /**
+     * Handles the failure while there is a failure while update of credentials is done by the admin.
+     *
+     * @param errorCode     Relevant error code.
+     * @param errorMessage  Error message.
+     * @param userID        ID of the user.
+     * @param newCredential New credential.
+     * @throws UserStoreException Exception that could be thrown by the listeners.
+     */
+    private void handleUpdateCredentialByAdminFailureWithID(String errorCode, String errorMessage, String userID,
+            Object newCredential) throws UserStoreException {
+
+        for (UserManagementErrorEventListener listener : UMListenerServiceComponent
+                .getUserManagementErrorEventListeners()) {
+            if (listener.isEnable() && !((AbstractUserManagementErrorListener) listener)
+                    .onUpdateCredentialByAdminFailureWithID(errorCode, errorMessage, userID, newCredential, this)) {
+                return;
+            }
+        }
+    }
+
+    /**
      * {@inheritDoc}
      */
     public final void updateCredentialByAdmin(String userName, Object newCredential)
@@ -1903,6 +2334,11 @@ public abstract class AbstractUserStoreManager implements UserStoreManager, Pagi
             Class argTypes[] = new Class[]{String.class, Object.class};
             callSecure("updateCredentialByAdmin", new Object[]{userName, newCredential}, argTypes);
             return;
+        }
+
+        // Get the relevant userID for the given username.
+        if (UserCoreUtil.isUniqueUserIDFeatureEnabled()) {
+            userName = getUserID(UserCoreClaimConstants.USERNAME_CLAIM_URI, userName, null);
         }
 
         UserStore userStore = getUserStore(userName);
@@ -2140,6 +2576,26 @@ public abstract class AbstractUserStoreManager implements UserStoreManager, Pagi
     }
 
     /**
+     * This method handles the follow up actions when there is a failure while deleting a user.
+     *
+     * @param errorCode    Relevant error code.
+     * @param errorMessage Relevant error message.
+     * @param userID       ID of the user.
+     * @throws UserStoreException User Store Exception that could be thrown while doing follow-up actions.
+     */
+    private void handleDeleteUserFailureWithID(String errorCode, String errorMessage, String userID)
+            throws UserStoreException {
+
+        for (UserManagementErrorEventListener listener : UMListenerServiceComponent
+                .getUserManagementErrorEventListeners()) {
+            if (listener.isEnable() && !((AbstractUserManagementErrorListener) listener)
+                    .onDeleteUserFailureWithID(errorCode, errorMessage, userID, this)) {
+                return;
+            }
+        }
+    }
+
+    /**
      * {@inheritDoc}
      */
     public final void deleteUser(String userName) throws UserStoreException {
@@ -2293,6 +2749,30 @@ public abstract class AbstractUserStoreManager implements UserStoreManager, Pagi
     }
 
     /**
+     * This is method is to call the relevant listeners when there is a failure while setting user claim value.
+     *
+     * @param errorCode    Error code.
+     * @param errorMessage Error message.
+     * @param userID       ID of the user.
+     * @param claimURI     Claim URI.
+     * @param claimValue   Claim Value.
+     * @param profileName  Name of the profile.
+     * @throws UserStoreException UserStore Exception that would be thrown within the listeners.
+     */
+    private void handleSetUserClaimValueFailureWithID(String errorCode, String errorMessage, String userID,
+            String claimURI, String claimValue, String profileName) throws UserStoreException {
+
+        for (UserManagementErrorEventListener listener : UMListenerServiceComponent
+                .getUserManagementErrorEventListeners()) {
+            if (listener.isEnable() && !((AbstractUserManagementErrorListener) listener)
+                    .onSetUserClaimValueFailureWithID(errorCode, errorMessage, userID, claimURI, claimValue,
+                            profileName, this)) {
+                return;
+            }
+        }
+    }
+
+    /**
      * {@inheritDoc}
      */
     public final void setUserClaimValue(String userName, String claimURI, String claimValue,
@@ -2392,6 +2872,28 @@ public abstract class AbstractUserStoreManager implements UserStoreManager, Pagi
                 .getUserManagementErrorEventListeners()) {
             if (listener.isEnable() && !listener
                     .onSetUserClaimValuesFailure(errorCode, errorMessage, userName, claims, profileName, this)) {
+                return;
+            }
+        }
+    }
+
+    /**
+     * This method is responsible for calling relevant methods when there is a failure while setting user claim values.
+     *
+     * @param errorCode    Error code.
+     * @param errorMessage Error message.
+     * @param userName     Name of the user.
+     * @param claims       Relevant claims.
+     * @param profileName  Name of the profile.
+     * @throws UserStoreException Exception that will be thrown by relevant listeners.
+     */
+    private void handleSetUserClaimValuesFailureWithID(String errorCode, String errorMessage, String userName,
+            Map<String, String> claims, String profileName) throws UserStoreException {
+
+        for (UserManagementErrorEventListener listener : UMListenerServiceComponent
+                .getUserManagementErrorEventListeners()) {
+            if (listener.isEnable() && !((AbstractUserManagementErrorListener) listener)
+                    .onSetUserClaimValuesFailureWithID(errorCode, errorMessage, userName, claims, profileName, this)) {
                 return;
             }
         }
@@ -2508,6 +3010,29 @@ public abstract class AbstractUserStoreManager implements UserStoreManager, Pagi
     }
 
     /**
+     * To handle the listener events when there is a failure while trying to delete the user  claim value.
+     *
+     * @param errorCode    Relevant error code.
+     * @param errorMessage error message
+     * @param userID       ID of the user.
+     * @param claimURI     Claim URI
+     * @param profileName  Name of the profile.
+     * @throws UserStoreException Exception that will thrown from listeners.
+     */
+    private void handleDeleteUserClaimValueFailureWithID(String errorCode, String errorMessage, String userID,
+            String claimURI, String profileName) throws UserStoreException {
+
+        for (UserManagementErrorEventListener listener : UMListenerServiceComponent
+                .getUserManagementErrorEventListeners()) {
+            if (listener.isEnable() && !((AbstractUserManagementErrorListener) listener)
+                    .onDeleteUserClaimValueFailureWithID(errorCode, errorMessage, userID, claimURI, profileName,
+                            this)) {
+                return;
+            }
+        }
+    }
+
+    /**
      * {@inheritDoc}
      */
     public final void deleteUserClaimValue(String userName, String claimURI, String profileName)
@@ -2517,6 +3042,11 @@ public abstract class AbstractUserStoreManager implements UserStoreManager, Pagi
             Class argTypes[] = new Class[]{String.class, String.class, String.class};
             callSecure("deleteUserClaimValue", new Object[]{userName, claimURI, profileName}, argTypes);
             return;
+        }
+
+        // Get the relevant userID for the given username.
+        if (UserCoreUtil.isUniqueUserIDFeatureEnabled()) {
+            userName = getUserID(UserCoreClaimConstants.USERNAME_CLAIM_URI, userName, null);
         }
 
         UserStore userStore = getUserStore(userName);
@@ -2615,6 +3145,28 @@ public abstract class AbstractUserStoreManager implements UserStoreManager, Pagi
     }
 
     /**
+     * This method handles a failure when trying to delete user claim values.
+     *
+     * @param errorCode    Error code.
+     * @param errorMessage Error message
+     * @param userID       ID of the user.
+     * @param claims       Claims
+     * @param profileName  Name of the profile.
+     * @throws UserStoreException User Store Exception that will be thrown from the relevant listeners.
+     */
+    private void handleDeleteUserClaimValuesFailureWithID(String errorCode, String errorMessage, String userID,
+            String[] claims, String profileName) throws UserStoreException {
+
+        for (UserManagementErrorEventListener listener : UMListenerServiceComponent
+                .getUserManagementErrorEventListeners()) {
+            if (listener.isEnable() && !listener
+                    .onDeleteUserClaimValuesFailure(errorCode, errorMessage, userID, claims, profileName, this)) {
+                return;
+            }
+        }
+    }
+
+    /**
      * {@inheritDoc}
      */
     public final void deleteUserClaimValues(String userName, String[] claims, String profileName)
@@ -2624,6 +3176,11 @@ public abstract class AbstractUserStoreManager implements UserStoreManager, Pagi
             Class argTypes[] = new Class[] { String.class, String[].class, String.class };
             callSecure("deleteUserClaimValues", new Object[] { userName, claims, profileName }, argTypes);
             return;
+        }
+
+        // Get the relevant userID for the given username.
+        if (UserCoreUtil.isUniqueUserIDFeatureEnabled()) {
+            userName = getUserID(UserCoreClaimConstants.USERNAME_CLAIM_URI, userName, null);
         }
 
         UserStore userStore = getUserStore(userName);
@@ -3080,6 +3637,29 @@ public abstract class AbstractUserStoreManager implements UserStoreManager, Pagi
     }
 
     /**
+     * This method calls the relevant listeners that handle failure during update user list of a role.
+     *
+     * @param errorCode      Relevant error code.
+     * @param errorMessage   Relevant error message.
+     * @param roleName       Name of the role.
+     * @param deletedUserIDs Removed users from a particular role.
+     * @param newUserIDs     Added users from a particular role.
+     * @throws UserStoreException Exception that will be thrown from the relevant listeners.
+     */
+    private void handleUpdateUserListOfRoleFailureWithID(String errorCode, String errorMessage, String roleName,
+            String[] deletedUserIDs, String[] newUserIDs) throws UserStoreException {
+
+        for (UserManagementErrorEventListener listener : UMListenerServiceComponent
+                .getUserManagementErrorEventListeners()) {
+            if (listener.isEnable() && !((AbstractUserManagementErrorListener) listener)
+                    .onUpdateUserListOfRoleFailureWithID(errorCode, errorMessage, roleName, deletedUserIDs, newUserIDs,
+                            this)) {
+                return;
+            }
+        }
+    }
+
+    /**
      * {@inheritDoc}
      */
     private final void updateUserListOfRoleInternal(String roleName, String[] deletedUsers, String[] newUsers)
@@ -3107,6 +3687,12 @@ public abstract class AbstractUserStoreManager implements UserStoreManager, Pagi
 
                 }
             }
+        }
+
+        // Get the relevant userID for the given username.
+        if (UserCoreUtil.isUniqueUserIDFeatureEnabled()) {
+            deletedUsers = UserCoreUtil.getUserList(deletedUsers).toArray(String[]::new);
+            newUsers = UserCoreUtil.getUserList(newUsers).toArray(String[]::new);
         }
 
         UserStore userStore = getUserStore(roleName);
@@ -3230,6 +3816,38 @@ public abstract class AbstractUserStoreManager implements UserStoreManager, Pagi
         }
     }
 
+    /**
+     * This method is responsible for calling the listeners after updating user list of role.
+     *
+     * @param roleName       Name of the role.
+     * @param deletedUserIDs Removed users
+     * @param newUserIDs     Added users.
+     * @param isAuditLogOnly Indicate whether to call only the audit log listener.
+     * @throws UserStoreException Exception that will be thrown by relevant listeners.
+     */
+    private void handleDoPostUpdateUserListOfRoleWithID(String roleName, String[] deletedUserIDs, String[] newUserIDs,
+            boolean isAuditLogOnly) throws UserStoreException {
+
+        try {
+            for (UserOperationEventListener listener : UMListenerServiceComponent.getUserOperationEventListeners()) {
+                if (isAuditLogOnly && !listener.getClass().getName()
+                        .endsWith(UserCoreErrorConstants.AUDIT_LOGGER_CLASS_NAME)) {
+                    continue;
+                }
+                if (!((AbstractUserOperationEventListener) listener)
+                        .doPostUpdateUserListOfRoleWithID(roleName, deletedUserIDs, newUserIDs, this)) {
+                    return;
+                }
+            }
+        } catch (UserStoreException ex) {
+            handleUpdateUserListOfRoleFailureWithID(
+                    ErrorMessages.ERROR_CODE_ERROR_WHILE_POST_UPDATE_USERS_OF_ROLE.getCode(),
+                    String.format(ErrorMessages.ERROR_CODE_ERROR_WHILE_POST_UPDATE_USERS_OF_ROLE.getMessage(),
+                            ex.getMessage()), roleName, deletedUserIDs, newUserIDs);
+            throw ex;
+        }
+    }
+
     public final void updateRoleListOfUser(final String username, final String[] deletedRoles, final String[] newRoles)
             throws UserStoreException {
         try {
@@ -3274,6 +3892,30 @@ public abstract class AbstractUserStoreManager implements UserStoreManager, Pagi
     }
 
     /**
+     * This method is responsible for calling the methods of listeners after a failure while trying to update role
+     * list of users.
+     *
+     * @param errorCode    Error code.
+     * @param errorMessage Error message.
+     * @param userID       User ID
+     * @param deletedRoles Removed roles
+     * @param newRoles     Assigned roles
+     * @throws UserStoreException Exception that will be thrown by relevant listeners.
+     */
+    private void handleUpdateRoleListOfUserFailureWithID(String errorCode, String errorMessage, String userID,
+            String[] deletedRoles, String[] newRoles) throws UserStoreException {
+
+        for (UserManagementErrorEventListener listener : UMListenerServiceComponent
+                .getUserManagementErrorEventListeners()) {
+            if (listener.isEnable() && !((AbstractUserManagementErrorListener) listener)
+                    .onUpdateRoleListOfUserFailureWithID(errorCode, errorMessage, userID, deletedRoles, newRoles,
+                            this)) {
+                return;
+            }
+        }
+    }
+
+    /**
      * {@inheritDoc}
      */
     private final void updateRoleListOfUserInternal(String userName, String[] deletedRoles, String[] newRoles)
@@ -3283,6 +3925,11 @@ public abstract class AbstractUserStoreManager implements UserStoreManager, Pagi
                 .getUserStoreProperty(UserCoreConstants.RealmConfig.PROPERTY_DOMAIN_NAME);
         if (primaryDomain != null) {
             primaryDomain += CarbonConstants.DOMAIN_SEPARATOR;
+        }
+
+        // Get the relevant userID for the given username.
+        if (UserCoreUtil.isUniqueUserIDFeatureEnabled()) {
+            userName = getUserID(UserCoreClaimConstants.USERNAME_CLAIM_URI, userName, null);
         }
 
         if (deletedRoles != null && deletedRoles.length > 0) {
@@ -4073,6 +4720,11 @@ public abstract class AbstractUserStoreManager implements UserStoreManager, Pagi
             return (Boolean) object;
         }
 
+        // Get the relevant userID for the given username.
+        if (UserCoreUtil.isUniqueUserIDFeatureEnabled()) {
+            userName = getUserID(UserCoreClaimConstants.USERNAME_CLAIM_URI, userName, null);
+        }
+
         if (UserCoreUtil.isRegistrySystemUser(userName)) {
             return true;
         }
@@ -4173,6 +4825,26 @@ public abstract class AbstractUserStoreManager implements UserStoreManager, Pagi
 
         handlePostGetUserList(null, null, new ArrayList<>(Arrays.asList(userList)), true);
         return userList;
+    }
+
+    /**
+     * This is to call the relevant post methods in listeners after successful retrieval of user list of a role.
+     *
+     * @param roleName Name of the role.
+     * @param userList List of users.
+     * @throws UserStoreException User Store Exception.
+     */
+    private void handleDoPostGetUserListOfRoleWithID(String roleName, User[] userList) throws UserStoreException {
+
+        for (UserOperationEventListener userOperationEventListener : UMListenerServiceComponent
+                .getUserOperationEventListeners()) {
+            if (userOperationEventListener instanceof AbstractUserOperationEventListener) {
+                if (!((AbstractUserOperationEventListener) userOperationEventListener)
+                        .doPostGetUserListOfRoleWithID(roleName, userList, this)) {
+                    return;
+                }
+            }
+        }
     }
 
     /**
@@ -4303,6 +4975,11 @@ public abstract class AbstractUserStoreManager implements UserStoreManager, Pagi
         // anonymous user is only assigned to  anonymous role
         if (CarbonConstants.REGISTRY_ANONNYMOUS_USERNAME.equalsIgnoreCase(userName)) {
             return new String[]{CarbonConstants.REGISTRY_ANONNYMOUS_ROLE_NAME};
+        }
+
+        // Get the relevant userID for the given username.
+        if (UserCoreUtil.isUniqueUserIDFeatureEnabled()) {
+            userName = getUserID(UserCoreClaimConstants.USERNAME_CLAIM_URI, userName, null);
         }
 
         String usernameWithDomain = UserCoreUtil.addDomainToName(userName, getMyDomainName());
@@ -4814,6 +5491,12 @@ public abstract class AbstractUserStoreManager implements UserStoreManager, Pagi
      */
     @Override
     public Date getPasswordExpirationTime(String userName) throws UserStoreException {
+
+        // Get the relevant userID for the given username.
+        if (UserCoreUtil.isUniqueUserIDFeatureEnabled()) {
+            userName = getUserID(UserCoreClaimConstants.USERNAME_CLAIM_URI, userName, null);
+        }
+
         UserStore userStore = getUserStore(userName);
 
         if (userStore.isRecurssive()) {
@@ -4823,12 +5506,23 @@ public abstract class AbstractUserStoreManager implements UserStoreManager, Pagi
         return null;
     }
 
+    private UserStore getUserStoreWithID(final String userID) throws UserStoreException {
+
+        return getUserStoreInternal(userID);
+    }
+
     private UserStore getUserStore(final String user) throws UserStoreException {
+
+        return getUserStoreInternal(user);
+    }
+
+    private UserStore getUserStoreInternal(final String user) throws UserStoreException {
+
         try {
             return AccessController.doPrivileged(new PrivilegedExceptionAction<UserStore>() {
                 @Override
                 public UserStore run() throws Exception {
-                    return getUserStoreInternal(user);
+                    return getUserStoreInternalImpl(user);
                 }
             });
         } catch (PrivilegedActionException e) {
@@ -4840,7 +5534,7 @@ public abstract class AbstractUserStoreManager implements UserStoreManager, Pagi
      * @return
      * @throws UserStoreException
      */
-    private UserStore getUserStoreInternal(String user) throws UserStoreException {
+    private UserStore getUserStoreInternalImpl(String user) throws UserStoreException {
 
         int index;
         index = user.indexOf(CarbonConstants.DOMAIN_SEPARATOR);
@@ -5193,6 +5887,17 @@ public abstract class AbstractUserStoreManager implements UserStoreManager, Pagi
         return roleList;
     }
 
+    private Map<String, String> doGetUserClaimValuesWithID(String userID, String[] claims, String domainName,
+            String profileName) throws UserStoreException {
+        return doGetUserClaimValuesInternal(userID, claims, domainName, profileName);
+    }
+
+    private Map<String, String> doGetUserClaimValues(String userName, String[] claims, String domainName,
+            String profileName) throws UserStoreException {
+
+        return doGetUserClaimValuesInternal(userName, claims, domainName, profileName);
+    }
+
     /**
      * @param userName
      * @param claims
@@ -5200,12 +5905,12 @@ public abstract class AbstractUserStoreManager implements UserStoreManager, Pagi
      * @return
      * @throws UserStoreException
      */
-    private Map<String, String> doGetUserClaimValues(String userName, String[] claims,
+    private Map<String, String> doGetUserClaimValuesInternal(String userName, String[] claims,
                                                      String domainName, String profileName) throws UserStoreException {
 
         if (!isSecureCall.get()) {
             Class argTypes[] = new Class[]{String.class, String[].class, String.class, String.class};
-            Object object = callSecure("doGetUserClaimValues", new Object[]{userName, claims, domainName,
+            Object object = callSecure("doGetUserClaimValuesInternal", new Object[]{userName, claims, domainName,
                     profileName}, argTypes);
             return (Map<String, String>) object;
         }
@@ -5740,12 +6445,46 @@ public abstract class AbstractUserStoreManager implements UserStoreManager, Pagi
             throws UserStoreException;
 
     /**
-     * @param userName
-     * @param filter
-     * @return
-     * @throws UserStoreException
+     * @param roleName role name.
+     * @param filter   filter.
+     * @return user list of the given role.
+     * @throws UserStoreException Thrown by the underlying UserStoreManager.
      */
-    public final String[] doGetRoleListOfUser(String userName, String filter)
+    protected User[] doGetUserListOfRoleWithID(String roleName, String filter) throws UserStoreException {
+
+        if (log.isDebugEnabled()) {
+            log.debug("Operation is not supported in: " + this.getClass());
+        }
+        return new User[0];
+    }
+
+    /**
+     * This will return the roles list of given user ID.
+     *
+     * @param userID user ID.
+     * @param filter filter.
+     * @return user list of the given role.
+     * @throws UserStoreException Thrown by the underlying UserStoreManager.
+     */
+    public String[] doGetRoleListOfUserWithID(String userID, String filter) throws UserStoreException {
+
+        return doGetRoleListOfUserInternal(userID, filter);
+    }
+
+    /**
+     * This will return the roles list of given user name.
+     *
+     * @param userName user name.
+     * @param filter   filter.
+     * @return user list of the given role.
+     * @throws UserStoreException Thrown by the underlying UserStoreManager.
+     */
+    public String[] doGetRoleListOfUser(String userName, String filter) throws UserStoreException {
+
+        return doGetRoleListOfUserInternal(userName, filter);
+    }
+
+    private final String[] doGetRoleListOfUserInternal(String userName, String filter)
             throws UserStoreException {
 
         if (!isSecureCall.get()) {
@@ -6956,4 +7695,1944 @@ public abstract class AbstractUserStoreManager implements UserStoreManager, Pagi
                 .startsWith(UserCoreConstants.INTERNAL_DOMAIN.toLowerCase()) || roleName.toLowerCase()
                 .startsWith(WORKFLOW_DOMAIN.toLowerCase());
     }
+
+    @Override
+    public final User authenticateWithID(final String preferredUserNameProperty, final String preferredUserNameValue,
+            final Object credential, final String profileName) throws UserStoreException {
+        try {
+            return AccessController.doPrivileged(new PrivilegedExceptionAction<User>() {
+                @Override
+                public User run() throws Exception {
+                    if (!validateUserNameAndCredential(preferredUserNameValue, preferredUserNameValue)) {
+                        return null;
+                    }
+                    int index = preferredUserNameProperty.indexOf(CarbonConstants.DOMAIN_SEPARATOR);
+                    boolean domainProvided = index > 0;
+                    return authenticateWithID(preferredUserNameProperty, preferredUserNameValue, credential,
+                            profileName, domainProvided);
+                }
+            });
+        } catch (PrivilegedActionException e) {
+            if (!(e.getException() instanceof UserStoreException)) {
+                handleOnAuthenticateFailureWithID(ErrorMessages.ERROR_CODE_ERROR_WHILE_AUTHENTICATION.getCode(),
+                        String.format(ErrorMessages.ERROR_CODE_ERROR_WHILE_AUTHENTICATION.getMessage(), e.getMessage()),
+                        preferredUserNameValue, credential);
+            }
+            throw (UserStoreException) e.getException();
+        }
+    }
+
+    /**
+     * Given the preferred user name and a credential object, the method will validate whether the user can be
+     * authenticated.
+     *
+     * @param preferredUserNameProperty The preferred user name property.
+     * @param preferredUserNameValue    The preferred user name value.
+     * @param credential                The credential of a user.
+     * @param profileName               profile name.
+     * @param domainProvided            Whether the domain is provided.
+     * @return authenticated user
+     * @throws UserStoreException Thrown by the underlying UserStoreManager.
+     */
+    protected User authenticateWithID(final String preferredUserNameProperty, final String preferredUserNameValue,
+            final Object credential, final String profileName, final boolean domainProvided) throws UserStoreException {
+
+        try {
+            return AccessController.doPrivileged(new PrivilegedExceptionAction<User>() {
+                @Override
+                public User run() throws Exception {
+                    return authenticateInternalWithID(preferredUserNameProperty, preferredUserNameValue, credential,
+                            profileName, domainProvided);
+                }
+            });
+        } catch (PrivilegedActionException e) {
+            throw (UserStoreException) e.getException();
+        }
+
+    }
+
+    private User authenticateInternalWithID(String preferredUserNameProperty, String preferredUserNameValue,
+            Object credential, String profileName, boolean domainProvided) throws UserStoreException {
+
+        boolean authenticated = false;
+        User authenticatedUser = null;
+
+        // Extracting the domain from preferredUserNameValue.
+        String extractedDomain = null;
+        int index;
+        index = preferredUserNameValue.indexOf(CarbonConstants.DOMAIN_SEPARATOR);
+        if (index > 0) {
+            String names[] = preferredUserNameValue.split(CarbonConstants.DOMAIN_SEPARATOR);
+            extractedDomain = names[0].trim();
+        }
+
+        UserStore userStore = getUserStore(preferredUserNameValue);
+        preferredUserNameValue = UserCoreUtil.removeDomainFromName(preferredUserNameValue);
+
+        if (userStore.isRecurssive() && userStore.getUserStoreManager() instanceof AbstractUserStoreManager) {
+            return ((AbstractUserStoreManager) userStore.getUserStoreManager())
+                    .authenticateWithID(preferredUserNameProperty, preferredUserNameValue, credential, profileName);
+        }
+
+        Secret credentialObj;
+        try {
+            credentialObj = Secret.getSecret(credential);
+        } catch (UnsupportedSecretTypeException e) {
+            handleOnAuthenticateFailureWithID(ErrorMessages.ERROR_CODE_UNSUPPORTED_CREDENTIAL_TYPE.getCode(),
+                    ErrorMessages.ERROR_CODE_UNSUPPORTED_CREDENTIAL_TYPE.getMessage(), preferredUserNameValue,
+                    credential);
+            throw new UserStoreException(ErrorMessages.ERROR_CODE_UNSUPPORTED_CREDENTIAL_TYPE.toString(), e);
+        }
+
+        // #################### Domain Name Free Zone Starts Here ################################
+
+        // #################### <Listeners> #####################################################
+        try {
+            for (UserStoreManagerListener listener : UMListenerServiceComponent.getUserStoreManagerListeners()) {
+                Object credentialArgument;
+                if (listener instanceof SecretHandleableListener) {
+                    credentialArgument = credentialObj;
+                } else {
+                    credentialArgument = credential;
+                }
+
+                if (!((AbstractUserStoreManagerListener) listener)
+                        .authenticateWithID(preferredUserNameValue, credentialArgument, this)) {
+                    handleOnAuthenticateFailureWithID(ErrorMessages.ERROR_CODE_ERROR_WHILE_AUTHENTICATION.getCode(),
+                            ErrorMessages.ERROR_CODE_ERROR_WHILE_AUTHENTICATION.getMessage(), preferredUserNameValue,
+                            credentialArgument);
+                    return null;
+                }
+            }
+
+            try {
+                for (UserOperationEventListener listener : UMListenerServiceComponent
+                        .getUserOperationEventListeners()) {
+                    Object credentialArgument;
+                    if (listener instanceof SecretHandleableListener) {
+                        credentialArgument = credentialObj;
+                    } else {
+                        credentialArgument = credential;
+                    }
+
+                    if (!((AbstractUserOperationEventListener) listener)
+                            .doPreAuthenticateWithID(preferredUserNameValue, credentialArgument, this)) {
+                        handleOnAuthenticateFailureWithID(
+                                ErrorMessages.ERROR_CODE_ERROR_WHILE_PRE_AUTHENTICATION.getCode(),
+                                String.format(ErrorMessages.ERROR_CODE_ERROR_WHILE_PRE_AUTHENTICATION.getMessage(),
+                                        UserCoreErrorConstants.PRE_LISTENER_TASKS_FAILED_MESSAGE),
+                                preferredUserNameValue, credentialArgument);
+                        return null;
+                    }
+                }
+            } catch (UserStoreException ex) {
+                handleOnAuthenticateFailureWithID(ErrorMessages.ERROR_CODE_ERROR_WHILE_PRE_AUTHENTICATION.getCode(),
+                        String.format(ErrorMessages.ERROR_CODE_ERROR_WHILE_PRE_AUTHENTICATION.getMessage(),
+                                ex.getMessage()), preferredUserNameValue, credential);
+                throw ex;
+            }
+            // #################### </Listeners> #####################################################
+
+            int tenantId = getTenantId();
+
+            try {
+                RealmService realmService = UserCoreUtil.getRealmService();
+                if (realmService != null) {
+                    boolean tenantActive = realmService.getTenantManager().isTenantActive(tenantId);
+
+                    if (!tenantActive) {
+                        String errorCode = ErrorMessages.ERROR_CODE_TENANT_DEACTIVATED.getCode();
+                        String errorMessage = String
+                                .format(ErrorMessages.ERROR_CODE_TENANT_DEACTIVATED.getMessage(), tenantId);
+                        log.warn(errorCode + " - " + errorMessage);
+                        handleOnAuthenticateFailureWithID(errorCode, errorMessage, preferredUserNameValue, credential);
+                        return null;
+                    }
+                }
+            } catch (org.wso2.carbon.user.api.UserStoreException e) {
+                handleOnAuthenticateFailureWithID(ErrorMessages.ERROR_CODE_ERROR_WHILE_PRE_AUTHENTICATION.getCode(),
+                        String.format(ErrorMessages.ERROR_CODE_ERROR_WHILE_PRE_AUTHENTICATION.getMessage(),
+                                e.getMessage()), preferredUserNameValue, credential);
+                throw new UserStoreException("Error while trying to check tenant status for Tenant : " + tenantId, e);
+            }
+
+            // We are here due to two reason. Either there is no secondary UserStoreManager or no
+            // domain name provided with user name.
+
+            try {
+
+                String property = claimManager.getAttributeName(extractedDomain, preferredUserNameProperty);
+                // Let's authenticate with the primary UserStoreManager.
+                authenticatedUser = doAuthenticate(property, preferredUserNameValue, credentialObj, profileName);
+                if (authenticatedUser != null) {
+                    authenticated = true;
+                }
+            } catch (Exception e) {
+                handleOnAuthenticateFailureWithID(ErrorMessages.ERROR_CODE_ERROR_WHILE_AUTHENTICATION.getCode(),
+                        String.format(ErrorMessages.ERROR_CODE_ERROR_WHILE_AUTHENTICATION.getMessage(), e.getMessage()),
+                        preferredUserNameValue, credential);
+                // We can ignore and proceed. Ignore the results from this user store.
+
+                if (log.isDebugEnabled()) {
+                    log.debug("Error occurred while authenticating user: " + preferredUserNameValue, e);
+                } else {
+                    log.error(e);
+                }
+                authenticated = false;
+            }
+
+        } finally {
+            credentialObj.clear();
+        }
+
+        if (authenticated) {
+            // Set domain in thread local variable for subsequent operations
+            UserCoreUtil.setDomainInThreadLocal(UserCoreUtil.getDomainName(this.realmConfig));
+        }
+
+        // If authentication fails in the previous step and if the user has not specified a
+        // domain- then we need to execute chained UserStoreManagers recursively.
+        if (!authenticated && !domainProvided && this.getSecondaryUserStoreManager() != null) {
+            authenticatedUser = ((AbstractUserStoreManager) this.getSecondaryUserStoreManager())
+                    .authenticateWithID(preferredUserNameProperty, preferredUserNameValue, credential, profileName,
+                            domainProvided);
+        }
+
+        if (!authenticated) {
+            handleOnAuthenticateFailureWithID(ErrorMessages.ERROR_CODE_ERROR_WHILE_AUTHENTICATION.getCode(),
+                    String.format(ErrorMessages.ERROR_CODE_ERROR_WHILE_AUTHENTICATION.getMessage(),
+                            "Authentication failed"), preferredUserNameValue, credential);
+        }
+
+        try {
+            // You cannot change authentication decision in post handler to TRUE
+            for (UserOperationEventListener listener : UMListenerServiceComponent.getUserOperationEventListeners()) {
+                if (!listener.doPostAuthenticate(preferredUserNameValue, authenticated, this)) {
+                    handleOnAuthenticateFailureWithID(
+                            ErrorMessages.ERROR_CODE_ERROR_WHILE_POST_AUTHENTICATION.getCode(),
+                            String.format(ErrorMessages.ERROR_CODE_ERROR_WHILE_POST_AUTHENTICATION.getMessage(),
+                                    UserCoreErrorConstants.POST_LISTENER_TASKS_FAILED_MESSAGE), preferredUserNameValue,
+                            credential);
+                    return null;
+                }
+            }
+        } catch (UserStoreException ex) {
+            handleOnAuthenticateFailureWithID(ErrorMessages.ERROR_CODE_ERROR_WHILE_POST_AUTHENTICATION.getCode(),
+                    String.format(ErrorMessages.ERROR_CODE_ERROR_WHILE_POST_AUTHENTICATION.getMessage(),
+                            ex.getMessage()), preferredUserNameValue, credential);
+            throw ex;
+        }
+
+        if (log.isDebugEnabled()) {
+            if (!authenticated) {
+                log.debug("Authentication failure. Wrong username or password is provided.");
+            }
+        }
+
+        return authenticatedUser;
+    }
+
+    @Override
+    public final User[] listUsersWithID(String filter, int maxItemLimit) throws UserStoreException {
+
+        if (!isSecureCall.get()) {
+            Class argTypes[] = new Class[] { String.class, int.class };
+            Object object = callSecure("listUsersWithID", new Object[] { filter, maxItemLimit }, argTypes);
+            return (User[]) object;
+        }
+
+        int index;
+        index = filter.indexOf(CarbonConstants.DOMAIN_SEPARATOR);
+        User[] userList;
+
+        // Check whether we have a secondary UserStoreManager setup.
+        if (index > 0) {
+            // Using the short-circuit. User name comes with the domain name.
+            String domain = filter.substring(0, index);
+
+            UserStoreManager secManager = getSecondaryUserStoreManager(domain);
+            if (secManager != null) {
+                // We have a secondary UserStoreManager registered for this domain.
+                filter = filter.substring(index + 1);
+                if (secManager instanceof AbstractUserStoreManager) {
+                    userList = ((AbstractUserStoreManager) secManager).doListUsersWithID(filter, maxItemLimit);
+
+                    handlePostGetUserListWithID(null, null, userList, true);
+                    return userList;
+                } else {
+                    userList = ((AbstractUserStoreManager) secManager).listUsersWithID(filter, maxItemLimit);
+                    handlePostGetUserListWithID(null, null, userList, true);
+                    return userList;
+                }
+            }
+        } else if (index == 0) {
+            userList = doListUsersWithID(filter.substring(1), maxItemLimit);
+            handlePostGetUserListWithID(null, null, userList, true);
+            return userList;
+        }
+
+        try {
+            userList = doListUsersWithID(filter, maxItemLimit);
+        } catch (UserStoreException ex) {
+            handleGetUserListFailureWithID(ErrorMessages.ERROR_CODE_ERROR_WHILE_GETTING_USER_LIST.getCode(),
+                    String.format(ErrorMessages.ERROR_CODE_ERROR_WHILE_GETTING_USER_LIST.getMessage(), ex.getMessage()),
+                    null, null, null);
+            throw ex;
+        }
+
+        String primaryDomain = realmConfig.getUserStoreProperty(UserCoreConstants.RealmConfig.PROPERTY_DOMAIN_NAME);
+
+        if (this.getSecondaryUserStoreManager() != null) {
+            for (Map.Entry<String, UserStoreManager> entry : userStoreManagerHolder.entrySet()) {
+                if (entry.getKey().equalsIgnoreCase(primaryDomain)) {
+                    continue;
+                }
+                UserStoreManager storeManager = entry.getValue();
+                if (storeManager instanceof AbstractUserStoreManager) {
+                    try {
+                        User[] secondUserList = ((AbstractUserStoreManager) storeManager)
+                                .doListUsersWithID(filter, maxItemLimit);
+                        userList = (Stream.concat(Arrays.stream(userList), Arrays.stream(secondUserList)))
+                                .toArray(User[]::new);
+                    } catch (UserStoreException ex) {
+                        handleGetUserListFailureWithID(ErrorMessages.ERROR_CODE_ERROR_WHILE_GETTING_USER_LIST.getCode(),
+                                String.format(ErrorMessages.ERROR_CODE_ERROR_WHILE_GETTING_USER_LIST.getMessage(),
+                                        ex.getMessage()), null, null, null);
+
+                        // We can ignore and proceed. Ignore the results from this user store.
+                        log.error(ex);
+                    }
+                } else {
+                    User[] secondUserList = ((AbstractUserStoreManager) storeManager)
+                            .listUsersWithID(filter, maxItemLimit);
+                    //                    userList = UserCoreUtil.combineArrays(userList, secondUserList);
+                    userList = (Stream.concat(Arrays.stream(userList), Arrays.stream(secondUserList)))
+                            .toArray(User[]::new);
+                }
+            }
+        }
+
+        handlePostGetUserListWithID(null, null, userList, true);
+        return userList;
+    }
+
+    @Override
+    public boolean isExistingUserWithID(String userID) throws UserStoreException {
+
+        if (!isSecureCall.get()) {
+            Class argTypes[] = new Class[] { String.class };
+            Object object = callSecure("isExistingUserWithID", new Object[] { userID }, argTypes);
+            return (Boolean) object;
+        }
+
+        if (UserCoreUtil.isRegistrySystemUser(userID)) {
+            return true;
+        }
+
+        UserStore userStore = getUserStoreWithID(userID);
+        if (userStore.isRecurssive()) {
+            return ((AbstractUserStoreManager) userStore.getUserStoreManager())
+                    .isExistingUserWithID(userStore.getDomainFreeName());
+        }
+
+        // #################### Domain Name Free Zone Starts Here ################################
+
+        if (userStore.isSystemStore()) {
+            return systemUserRoleManager.isExistingSystemUser(userStore.getDomainFreeName());
+        }
+
+        return doCheckExistingUserWithID(userStore.getDomainFreeName());
+
+    }
+
+    @Override
+    public String[] getRoleListOfUserWithID(String userID) throws UserStoreException {
+
+        if (!isSecureCall.get()) {
+            Class argTypes[] = new Class[] { String.class };
+            Object object = callSecure("getRoleListOfUserWithID", new Object[] { userID }, argTypes);
+            return (String[]) object;
+        }
+
+        String[] roleNames = null;
+
+        // anonymous user is only assigned to  anonymous role
+        if (CarbonConstants.REGISTRY_ANONNYMOUS_USERNAME.equalsIgnoreCase(userID)) {
+            return new String[] { CarbonConstants.REGISTRY_ANONNYMOUS_ROLE_NAME };
+        }
+
+        String userIDWithDomain = UserCoreUtil.addDomainToName(userID, getMyDomainName());
+        // Check whether roles exist in cache
+        roleNames = getRoleListOfUserFromCache(this.tenantId, userIDWithDomain);
+        if (roleNames != null && roleNames.length > 0) {
+            return roleNames;
+        }
+
+        UserStore userStore = getUserStoreWithID(userID);
+        if (userStore.isRecurssive()) {
+            return ((AbstractUserStoreManager) userStore.getUserStoreManager())
+                    .getRoleListOfUserWithID(userStore.getDomainFreeName());
+        }
+
+        if (userStore.isSystemStore()) {
+            return systemUserRoleManager.getSystemRoleListOfUser(userStore.getDomainFreeName());
+        }
+        // #################### Domain Name Free Zone Starts Here ################################
+
+        roleNames = doGetRoleListOfUserWithID(userID, "*");
+
+        return roleNames;
+
+    }
+
+    @Override
+    public final User[] getUserListOfRoleWithID(String roleName) throws UserStoreException {
+
+        if (!isSecureCall.get()) {
+            Class argTypes[] = new Class[] { User.class };
+            Object object = callSecure("getUserListOfRoleWithID", new Object[] { roleName }, argTypes);
+            return (User[]) object;
+        }
+
+        User[] userNames = new User[0];
+
+        // If role does not exit, just return
+        if (!isExistingRole(roleName)) {
+            handleDoPostGetUserListOfRoleWithID(roleName, userNames);
+            return userNames;
+        }
+
+        UserStore userStore = getUserStoreWithID(roleName);
+
+        if (userStore.isRecurssive()) {
+            return ((AbstractUserStoreManager) userStore.getUserStoreManager())
+                    .getUserListOfRoleWithID(userStore.getDomainFreeName());
+        }
+
+        // #################### Domain Name Free Zone Starts Here
+        // ################################
+
+        if (userStore.isSystemStore()) {
+            String[] userList = systemUserRoleManager.getUserListOfSystemRole(userStore.getDomainFreeName());
+            User[] users = UserCoreUtil.getUserList(userList).toArray(User[]::new);
+            handleDoPostGetUserListOfRoleWithID(roleName, users);
+            return users;
+        }
+
+        String[] userNamesInHybrid;
+        if (userStore.isHybridRole()) {
+            if (UserCoreConstants.INTERNAL_DOMAIN.equalsIgnoreCase(userStore.getDomainName())) {
+                userNamesInHybrid = hybridRoleManager.getUserListOfHybridRole(userStore.getDomainFreeName());
+            } else {
+                userNamesInHybrid = hybridRoleManager.getUserListOfHybridRole(userStore.getDomainAwareName());
+            }
+
+            // remove domain
+            List<String> finalNameList = new ArrayList<>();
+            String displayNameAttribute = this.realmConfig.getUserStoreProperty(LDAPConstants.DISPLAY_NAME_ATTRIBUTE);
+
+            if (userNamesInHybrid != null && userNamesInHybrid.length > 0) {
+                if (displayNameAttribute != null && displayNameAttribute.trim().length() > 0) {
+                    for (String userName : userNamesInHybrid) {
+                        String domainName = UserCoreUtil.extractDomainFromName(userName);
+                        if (domainName == null || domainName.trim().length() == 0) {
+                            finalNameList.add(userName);
+                        }
+                        UserStoreManager userManager = userStoreManagerHolder.get(domainName);
+                        userName = UserCoreUtil.removeDomainFromName(userName);
+                        if (userManager != null) {
+                            String[] displayNames = null;
+                            if (userManager instanceof AbstractUserStoreManager) {
+                                // get displayNames
+                                displayNames = ((AbstractUserStoreManager) userManager)
+                                        .doGetDisplayNamesForInternalRole(new String[] { userName });
+                            } else {
+                                displayNames = userManager.getRoleNames();
+                            }
+
+                            for (String displayName : displayNames) {
+                                // if domain names are not added by above method, add it
+                                // here
+                                String nameWithDomain = UserCoreUtil.addDomainToName(displayName, domainName);
+                                finalNameList.add(nameWithDomain);
+                            }
+                        }
+                    }
+                } else {
+                    User[] usersInHybrid = UserCoreUtil.getUserList(userNamesInHybrid).toArray(User[]::new);
+                    handleDoPostGetUserListOfRoleWithID(roleName, usersInHybrid);
+                    return usersInHybrid;
+                }
+            }
+            String[] userList = finalNameList.toArray(new String[finalNameList.size()]);
+            User[] users = UserCoreUtil.getUserList(userList).toArray(User[]::new);
+            handleDoPostGetUserListOfRoleWithID(roleName, users);
+            return users;
+        }
+
+        if (readGroupsEnabled) {
+            userNames = doGetUserListOfRoleWithID(roleName, "*");
+            handleDoPostGetUserListOfRoleWithID(roleName, userNames);
+        }
+
+        return userNames;
+    }
+
+    @Override
+    public final String getUserClaimValueWithID(String userID, String claim, String profileName)
+            throws UserStoreException {
+
+        if (!isSecureCall.get()) {
+            Class argTypes[] = new Class[] { String.class, String.class, String.class };
+            Object object = callSecure("getUserClaimValueWithID", new Object[] { userID, claim, profileName },
+                    argTypes);
+            return (String) object;
+        }
+
+        UserStore userStore = getUserStoreWithID(userID);
+        if (userStore.isRecurssive()) {
+            return ((AbstractUserStoreManager) userStore.getUserStoreManager())
+                    .getUserClaimValueWithID(userStore.getDomainFreeName(), claim, profileName);
+        }
+
+        // #################### Domain Name Free Zone Starts Here ################################
+        // If user does not exist, throw an exception
+
+        if (!doCheckExistingUserWithID(userID)) {
+            String errorCode = ErrorMessages.ERROR_CODE_NON_EXISTING_USER.getCode();
+            String errorMessage = String.format(ErrorMessages.ERROR_CODE_NON_EXISTING_USER.getMessage(), userID,
+                    realmConfig.getUserStoreProperty(UserCoreConstants.RealmConfig.PROPERTY_DOMAIN_NAME));
+            handleGetUserClaimValueFailureWithID(errorCode, errorMessage, userID, claim, profileName);
+            throw new UserStoreException(errorCode + " - " + errorMessage);
+        }
+
+        Map<String, String> finalValues;
+        try {
+            finalValues = doGetUserClaimValuesWithID(userID, new String[] { claim }, userStore.getDomainName(),
+                    profileName);
+        } catch (UserStoreException ex) {
+            handleGetUserClaimValueFailureWithID(
+                    ErrorMessages.ERROR_CODE_ERROR_WHILE_GETTING_USER_CLAIM_VALUE.getCode(),
+                    String.format(ErrorMessages.ERROR_CODE_ERROR_WHILE_GETTING_USER_CLAIM_VALUE.getMessage(),
+                            ex.getMessage()), userID, claim, profileName);
+            throw ex;
+        }
+
+        String value = null;
+
+        if (finalValues != null) {
+            value = finalValues.get(claim);
+        }
+
+        // #################### <Listeners> #####################################################
+
+        List<String> list = new ArrayList<>();
+        if (value != null) {
+            list.add(value);
+        }
+
+        try {
+            for (UserOperationEventListener listener : UMListenerServiceComponent.getUserOperationEventListeners()) {
+                if (listener instanceof AbstractUserOperationEventListener) {
+                    AbstractUserOperationEventListener newListener = (AbstractUserOperationEventListener) listener;
+                    if (!newListener.doPostGetUserClaimValueWithID(userID, claim, list, profileName, this)) {
+                        handleGetUserClaimValueFailureWithID(
+                                ErrorMessages.ERROR_CODE_ERROR_DURING_POST_GET_USER_CLAIM_VALUE.getCode(),
+                                String.format(
+                                        ErrorMessages.ERROR_CODE_ERROR_DURING_POST_GET_USER_CLAIM_VALUE.getMessage(),
+                                        UserCoreErrorConstants.POST_LISTENER_TASKS_FAILED_MESSAGE), userID, claim,
+                                profileName);
+                        break;
+                    }
+                }
+            }
+        } catch (UserStoreException ex) {
+            handleGetUserClaimValueFailureWithID(
+                    ErrorMessages.ERROR_CODE_ERROR_DURING_POST_GET_USER_CLAIM_VALUE.getCode(),
+                    String.format(ErrorMessages.ERROR_CODE_ERROR_DURING_POST_GET_USER_CLAIM_VALUE.getMessage(),
+                            ex.getMessage()), userID, claim, profileName);
+            throw ex;
+        }
+        // #################### </Listeners> #####################################################
+
+        if (!list.isEmpty()) {
+            return list.get(0);
+        }
+        return value;
+    }
+
+    @Override
+    public final Map<String, String> getUserClaimValuesWithID(String userID, String[] claims, String profileName)
+            throws UserStoreException {
+
+        if (!isSecureCall.get()) {
+            Class argTypes[] = new Class[] { String.class, String[].class, String.class };
+            Object object = callSecure("getUserClaimValues", new Object[] { userID, claims, profileName }, argTypes);
+            return (Map<String, String>) object;
+        }
+
+        UserStore userStore = getUserStoreWithID(userID);
+        if (userStore.isRecurssive()) {
+            return userStore.getUserStoreManager()
+                    .getUserClaimValues(userStore.getDomainFreeName(), claims, profileName);
+        }
+
+        // #################### Domain Name Free Zone Starts Here ################################
+        if (!doCheckExistingUserWithID(userID)) {
+            String errorMessage = String.format(ErrorMessages.ERROR_CODE_NON_EXISTING_USER.getMessage(), userID,
+                    realmConfig.getUserStoreProperty(UserCoreConstants.RealmConfig.PROPERTY_DOMAIN_NAME));
+            String errorCode = ErrorMessages.ERROR_CODE_NON_EXISTING_USER.getCode();
+            handleGetUserClaimValuesFailureWithID(errorCode, errorMessage, userID, claims, profileName);
+            throw new UserStoreException(errorCode + " - " + errorMessage);
+        }
+        // check for null claim list
+        if (claims == null) {
+            claims = new String[0];
+        }
+
+        Map<String, String> finalValues;
+        try {
+            finalValues = doGetUserClaimValues(userID, claims, userStore.getDomainName(), profileName);
+        } catch (UserStoreException ex) {
+            handleGetUserClaimValuesFailureWithID(ErrorMessages.ERROR_CODE_ERROR_WHILE_GETTING_CLAIM_VALUES.getCode(),
+                    String.format(ErrorMessages.ERROR_CODE_ERROR_WHILE_GETTING_CLAIM_VALUES.getMessage(),
+                            ex.getMessage()), userID, claims, profileName);
+            throw ex;
+        }
+
+        // #################### <Listeners> #####################################################
+        try {
+            for (UserOperationEventListener listener : UMListenerServiceComponent.getUserOperationEventListeners()) {
+                if (listener instanceof AbstractUserOperationEventListener) {
+                    AbstractUserOperationEventListener newListener = (AbstractUserOperationEventListener) listener;
+                    if (!newListener.doPostGetUserClaimValuesWithID(userStore.getDomainFreeName(), claims, profileName,
+                            finalValues, this)) {
+                        handleGetUserClaimValuesFailureWithID(
+                                ErrorMessages.ERROR_CODE_ERROR_IN_POST_GET_CLAIM_VALUES.getCode(),
+                                String.format(ErrorMessages.ERROR_CODE_ERROR_IN_POST_GET_CLAIM_VALUES.getMessage(),
+                                        UserCoreErrorConstants.POST_LISTENER_TASKS_FAILED_MESSAGE), userID, claims,
+                                profileName);
+                        break;
+                    }
+                }
+            }
+        } catch (UserStoreException ex) {
+            handleGetUserClaimValuesFailureWithID(ErrorMessages.ERROR_CODE_ERROR_IN_POST_GET_CLAIM_VALUES.getCode(),
+                    String.format(ErrorMessages.ERROR_CODE_ERROR_IN_POST_GET_CLAIM_VALUES.getMessage(),
+                            ex.getMessage()), userID, claims, profileName);
+            throw ex;
+        }
+        // #################### </Listeners> #####################################################
+
+        return finalValues;
+    }
+
+    @Override
+    public final Claim[] getUserClaimValuesWithID(String userID, String profileName) throws UserStoreException {
+
+        if (!isSecureCall.get()) {
+            Class argTypes[] = new Class[] { String.class, String.class };
+            Object object = callSecure("getUserClaimValuesWithID", new Object[] { userID, profileName }, argTypes);
+            return (Claim[]) object;
+        }
+
+        UserStore userStore = getUserStoreWithID(userID);
+        if (userStore.isRecurssive()) {
+            return userStore.getUserStoreManager().getUserClaimValues(userStore.getDomainFreeName(), profileName);
+        }
+
+        // #################### Domain Name Free Zone Starts Here ################################
+        // If user does not exist, throw exception
+        if (!doCheckExistingUserWithID(userID)) {
+            String errorMessage = String.format(ErrorMessages.ERROR_CODE_NON_EXISTING_USER.getMessage(), userID,
+                    realmConfig.getUserStoreProperty(UserCoreConstants.RealmConfig.PROPERTY_DOMAIN_NAME));
+            String errorCode = ErrorMessages.ERROR_CODE_NON_EXISTING_USER.getCode();
+            handleGetUserClaimValuesFailureWithID(errorCode, errorMessage, userID, null, profileName);
+            throw new UserStoreException(errorCode + " - " + errorMessage);
+        }
+
+        if (profileName == null || profileName.trim().length() == 0) {
+            profileName = UserCoreConstants.DEFAULT_PROFILE;
+        }
+
+        String[] claims;
+        try {
+            claims = claimManager.getAllClaimUris();
+        } catch (org.wso2.carbon.user.api.UserStoreException e) {
+            handleGetUserClaimValuesFailureWithID(ErrorMessages.ERROR_CODE_ERROR_WHILE_GETTING_CLAIM_URI.getCode(),
+                    String.format(ErrorMessages.ERROR_CODE_ERROR_WHILE_GETTING_CLAIM_URI.getMessage(), e.getMessage()),
+                    userID, null, profileName);
+            throw new UserStoreException(e);
+        }
+
+        Map<String, String> values = this.getUserClaimValuesWithID(userID, claims, profileName);
+        Claim[] finalValues = new Claim[values.size()];
+        int i = 0;
+        for (Iterator<Map.Entry<String, String>> ite = values.entrySet().iterator(); ite.hasNext(); ) {
+            Map.Entry<String, String> entry = ite.next();
+            Claim claim = new Claim();
+            claim.setValue(entry.getValue());
+            claim.setClaimUri(entry.getKey());
+            String displayTag;
+            try {
+                displayTag = claimManager.getClaim(entry.getKey()).getDisplayTag();
+            } catch (org.wso2.carbon.user.api.UserStoreException e) {
+                throw new UserStoreException(e);
+            }
+            claim.setDisplayTag(displayTag);
+            finalValues[i] = claim;
+            i++;
+        }
+
+        return finalValues;
+    }
+
+    @Override
+    public final void updateCredentialWithID(String userID, Object newCredential, Object oldCredential)
+            throws UserStoreException {
+
+        if (!isSecureCall.get()) {
+            Class argTypes[] = new Class[] { String.class, Object.class, Object.class };
+            callSecure("updateCredentialWithID", new Object[] { userID, newCredential, oldCredential }, argTypes);
+            return;
+        }
+
+        UserStore userStore = getUserStoreWithID(userID);
+        if (userStore.isRecurssive()) {
+            ((AbstractUserStoreManager) userStore.getUserStoreManager())
+                    .updateCredentialWithID(userStore.getDomainFreeName(), newCredential, oldCredential);
+            return;
+        }
+
+        // #################### Domain Name Free Zone Starts Here ################################
+
+        if (isReadOnly()) {
+            handleUpdateCredentialFailureWithID(ErrorMessages.ERROR_CODE_READONLY_USER_STORE.getCode(),
+                    ErrorMessages.ERROR_CODE_READONLY_USER_STORE.getMessage(), userID, newCredential, oldCredential);
+            throw new UserStoreException(ErrorMessages.ERROR_CODE_READONLY_USER_STORE.toString());
+        }
+
+        Secret newCredentialObj;
+        Secret oldCredentialObj;
+        try {
+            newCredentialObj = Secret.getSecret(newCredential);
+            oldCredentialObj = Secret.getSecret(oldCredential);
+        } catch (UnsupportedSecretTypeException e) {
+            handleUpdateCredentialFailureWithID(ErrorMessages.ERROR_CODE_UNSUPPORTED_CREDENTIAL_TYPE.getCode(),
+                    ErrorMessages.ERROR_CODE_UNSUPPORTED_CREDENTIAL_TYPE.getMessage(), userID, newCredential,
+                    oldCredential);
+            throw new UserStoreException(ErrorMessages.ERROR_CODE_UNSUPPORTED_CREDENTIAL_TYPE.toString());
+        }
+
+        // #################### <Listeners> #####################################################
+        try {
+            try {
+                for (UserStoreManagerListener listener : UMListenerServiceComponent.getUserStoreManagerListeners()) {
+                    if (listener instanceof SecretHandleableListener) {
+                        if (!listener.updateCredential(userID, newCredentialObj, oldCredentialObj, this)) {
+                            handleUpdateCredentialFailureWithID(
+                                    ErrorMessages.ERROR_CODE_ERROR_DURING_PRE_UPDATE_CREDENTIAL.getCode(),
+                                    String.format(
+                                            ErrorMessages.ERROR_CODE_ERROR_DURING_PRE_UPDATE_CREDENTIAL.getMessage(),
+                                            UserCoreErrorConstants.PRE_LISTENER_TASKS_FAILED_MESSAGE), userID,
+                                    newCredential, oldCredential);
+                            return;
+                        }
+                    } else {
+                        if (!listener.updateCredential(userID, newCredential, oldCredential, this)) {
+                            handleUpdateCredentialFailureWithID(
+                                    ErrorMessages.ERROR_CODE_ERROR_DURING_PRE_UPDATE_CREDENTIAL.getCode(),
+                                    String.format(
+                                            ErrorMessages.ERROR_CODE_ERROR_DURING_PRE_UPDATE_CREDENTIAL.getMessage(),
+                                            UserCoreErrorConstants.PRE_LISTENER_TASKS_FAILED_MESSAGE), userID,
+                                    newCredential, oldCredential);
+                            return;
+                        }
+                    }
+                }
+
+                for (UserOperationEventListener listener : UMListenerServiceComponent
+                        .getUserOperationEventListeners()) {
+
+                    if (listener instanceof SecretHandleableListener) {
+                        if (!listener.doPreUpdateCredential(userID, newCredentialObj, oldCredentialObj, this)) {
+                            handleUpdateCredentialFailureWithID(
+                                    ErrorMessages.ERROR_CODE_ERROR_DURING_PRE_UPDATE_CREDENTIAL.getCode(),
+                                    String.format(
+                                            ErrorMessages.ERROR_CODE_ERROR_DURING_PRE_UPDATE_CREDENTIAL.getMessage(),
+                                            UserCoreErrorConstants.PRE_LISTENER_TASKS_FAILED_MESSAGE), userID,
+                                    newCredential, oldCredential);
+                            return;
+                        }
+                    } else {
+                        if (!listener.doPreUpdateCredential(userID, newCredential, oldCredential, this)) {
+                            handleUpdateCredentialFailureWithID(
+                                    ErrorMessages.ERROR_CODE_ERROR_DURING_PRE_UPDATE_CREDENTIAL.getCode(),
+                                    String.format(
+                                            ErrorMessages.ERROR_CODE_ERROR_DURING_PRE_UPDATE_CREDENTIAL.getMessage(),
+                                            UserCoreErrorConstants.PRE_LISTENER_TASKS_FAILED_MESSAGE), userID,
+                                    newCredential, oldCredential);
+                            return;
+                        }
+                    }
+                }
+            } catch (UserStoreException e) {
+                handleUpdateCredentialFailureWithID(
+                        ErrorMessages.ERROR_CODE_ERROR_DURING_PRE_UPDATE_CREDENTIAL.getCode(),
+                        String.format(ErrorMessages.ERROR_CODE_ERROR_DURING_PRE_UPDATE_CREDENTIAL.getMessage(),
+                                e.getMessage()), userID, newCredential, oldCredential);
+                throw e;
+            }
+            // #################### </Listeners> #####################################################
+
+            // This user name here is domain-less.
+            // We directly authenticate user against the selected UserStoreManager.
+            boolean isAuth = this.doAuthenticate(userID, oldCredentialObj);
+
+            if (isAuth) {
+                if (!checkUserPasswordValid(newCredential)) {
+                    String errorMsg = realmConfig.getUserStoreProperty(PROPERTY_PASSWORD_ERROR_MSG);
+
+                    if (errorMsg != null) {
+                        String errorMessage = String
+                                .format(ErrorMessages.ERROR_CODE_ERROR_DURING_PRE_UPDATE_CREDENTIAL.getMessage(),
+                                        errorMsg);
+                        String errorCode = ErrorMessages.ERROR_CODE_ERROR_DURING_PRE_UPDATE_CREDENTIAL.getCode();
+                        handleUpdateCredentialFailureWithID(errorCode, errorMessage, userID, newCredential,
+                                oldCredential);
+                        throw new UserStoreException(errorCode + " - " + errorMessage);
+                    }
+
+                    String errorMessage = String.format(ErrorMessages.ERROR_CODE_INVALID_PASSWORD.getMessage(),
+                            realmConfig.getUserStoreProperty(UserCoreConstants.RealmConfig.PROPERTY_JAVA_REG_EX));
+                    String errorCode = ErrorMessages.ERROR_CODE_INVALID_PASSWORD.getCode();
+                    handleUpdateCredentialFailureWithID(errorCode, errorMessage, userID, newCredential, oldCredential);
+                    throw new UserStoreException(errorCode + " - " + errorMessage);
+                }
+
+                try {
+                    this.doUpdateCredentialWithID(userID, newCredentialObj, oldCredentialObj);
+                } catch (UserStoreException ex) {
+                    handleUpdateCredentialFailureWithID(
+                            ErrorMessages.ERROR_CODE_ERROR_WHILE_UPDATING_CREDENTIAL.getCode(),
+                            String.format(ErrorMessages.ERROR_CODE_ERROR_WHILE_UPDATING_CREDENTIAL.getMessage(),
+                                    ex.getMessage()), userID, newCredential, oldCredential);
+                    throw ex;
+                }
+
+                // #################### <Listeners> ##################################################
+                try {
+                    for (UserOperationEventListener listener : UMListenerServiceComponent
+                            .getUserOperationEventListeners()) {
+                        if (listener instanceof SecretHandleableListener) {
+                            if (!listener.doPostUpdateCredential(userID, newCredentialObj, this)) {
+                                handleUpdateCredentialFailureWithID(
+                                        ErrorMessages.ERROR_CODE_ERROR_DURING_POST_UPDATE_CREDENTIAL.getCode(),
+                                        String.format(ErrorMessages.ERROR_CODE_ERROR_DURING_POST_UPDATE_CREDENTIAL
+                                                .getMessage(), "Post update credential tasks failed"), userID,
+                                        newCredentialObj, oldCredentialObj);
+                                return;
+                            }
+                        } else {
+                            if (!listener.doPostUpdateCredential(userID, newCredential, this)) {
+                                handleUpdateCredentialFailureWithID(
+                                        ErrorMessages.ERROR_CODE_ERROR_DURING_POST_UPDATE_CREDENTIAL.getCode(),
+                                        String.format(ErrorMessages.ERROR_CODE_ERROR_DURING_POST_UPDATE_CREDENTIAL
+                                                .getMessage(), "Post update credential tasks failed"), userID,
+                                        newCredential, oldCredential);
+                                return;
+                            }
+                        }
+                    }
+                } catch (UserStoreException ex) {
+                    handleUpdateCredentialFailureWithID(
+                            ErrorMessages.ERROR_CODE_ERROR_DURING_POST_UPDATE_CREDENTIAL.getCode(),
+                            String.format(ErrorMessages.ERROR_CODE_ERROR_DURING_POST_UPDATE_CREDENTIAL.getMessage(),
+                                    ex.getMessage()), userID, newCredential, oldCredential);
+                    throw ex;
+                }
+                // #################### </Listeners> ##################################################
+
+                return;
+            } else {
+                handleUpdateCredentialFailureWithID(ErrorMessages.ERROR_CODE_OLD_CREDENTIAL_DOES_NOT_MATCH.getCode(),
+                        ErrorMessages.ERROR_CODE_OLD_CREDENTIAL_DOES_NOT_MATCH.getMessage(), userID, newCredential,
+                        oldCredential);
+                throw new UserStoreException(ErrorMessages.ERROR_CODE_OLD_CREDENTIAL_DOES_NOT_MATCH.toString());
+            }
+        } finally {
+            newCredentialObj.clear();
+            oldCredentialObj.clear();
+        }
+    }
+
+    /**
+     * provides the unique user ID of the given user.
+     *
+     * @param claim       Claim name.
+     * @param claimValue  Claim value.
+     * @param profileName Profile name.
+     * @return user ID
+     * @throws UserStoreException Thrown by the underlying UserStoreManager.
+     */
+    public String getUserID(String claim, String claimValue, String profileName) throws UserStoreException {
+
+        // Extracting the domain from claimValue.
+        String extractedDomain = null;
+        int index;
+        index = claimValue.indexOf(CarbonConstants.DOMAIN_SEPARATOR);
+        if (index > 0) {
+            String names[] = claimValue.split(CarbonConstants.DOMAIN_SEPARATOR);
+            extractedDomain = names[0].trim();
+            claimValue = UserCoreUtil.removeDomainFromName(claimValue);
+        }
+
+        AbstractUserStoreManager userManager = null;
+        if (StringUtils.isNotEmpty(extractedDomain)) {
+            userManager = (AbstractUserStoreManager) getSecondaryUserStoreManager(extractedDomain);
+            if (log.isDebugEnabled()) {
+                log.debug("Domain: " + extractedDomain + " is passed with the claim and user store manager is loaded"
+                        + " for the given domain name.");
+            }
+        }
+
+        // Iterate through user stores and check for users for this claim.
+        List<String> usersFromUserStore = doGetUserList(claim, claimValue, profileName, extractedDomain, userManager);
+
+        // Assume that username will be unique
+        // TODO: Check the possibility of getting multiple IDs as the result
+        return usersFromUserStore.get(0);
+
+    }
+
+    @Override
+    public final void deleteUserWithID(String userID) throws UserStoreException {
+
+        if (!isSecureCall.get()) {
+            Class argTypes[] = new Class[] { String.class };
+            callSecure("deleteUserWithID", new Object[] { userID }, argTypes);
+            return;
+        }
+
+        String loggedInUser = CarbonContext.getThreadLocalCarbonContext().getUsername();
+        if (loggedInUser != null) {
+            loggedInUser = UserCoreUtil.addDomainToName(loggedInUser, UserCoreUtil.getDomainFromThreadLocal());
+            if ((loggedInUser.indexOf(UserCoreConstants.DOMAIN_SEPARATOR)) < 0) {
+                loggedInUser =
+                        UserCoreConstants.PRIMARY_DEFAULT_DOMAIN_NAME + CarbonConstants.DOMAIN_SEPARATOR + loggedInUser;
+            }
+        }
+
+        String deletingUser = UserCoreUtil.addDomainToName(userID, getMyDomainName());
+        if ((deletingUser.indexOf(UserCoreConstants.DOMAIN_SEPARATOR)) < 0) {
+            deletingUser =
+                    UserCoreConstants.PRIMARY_DEFAULT_DOMAIN_NAME + CarbonConstants.DOMAIN_SEPARATOR + deletingUser;
+        }
+
+        if (loggedInUser != null && loggedInUser.equals(deletingUser)) {
+            log.debug("User " + loggedInUser + " tried to delete him/her self");
+            handleDeleteUserFailureWithID(ErrorMessages.ERROR_CODE_DELETE_LOGGED_IN_USER.getCode(),
+                    ErrorMessages.ERROR_CODE_DELETE_LOGGED_IN_USER.getMessage(), userID);
+            throw new UserStoreException(ErrorMessages.ERROR_CODE_DELETE_LOGGED_IN_USER.toString());
+        }
+
+        UserStore userStore = getUserStoreWithID(userID);
+        if (userStore.isRecurssive()) {
+            ((AbstractUserStoreManager) userStore.getUserStoreManager())
+                    .deleteUserWithID(userStore.getDomainFreeName());
+            return;
+        }
+
+        // #################### Domain Name Free Zone Starts Here ################################
+
+        if (UserCoreUtil.isPrimaryAdminUser(userID, realmConfig)) {
+            handleDeleteUserFailureWithID(ErrorMessages.ERROR_CODE_DELETE_ADMIN_USER.getCode(),
+                    ErrorMessages.ERROR_CODE_DELETE_ADMIN_USER.getMessage(), userID);
+            throw new UserStoreException(ErrorMessages.ERROR_CODE_DELETE_ADMIN_USER.toString());
+        }
+
+        if (UserCoreUtil.isRegistryAnnonymousUser(userID)) {
+            handleDeleteUserFailureWithID(ErrorMessages.ERROR_CODE_DELETE_ANONYMOUS_USER.getCode(),
+                    ErrorMessages.ERROR_CODE_DELETE_ANONYMOUS_USER.getMessage(), userID);
+            throw new UserStoreException(ErrorMessages.ERROR_CODE_DELETE_ANONYMOUS_USER.toString());
+        }
+
+        if (isReadOnly()) {
+            handleDeleteUserFailureWithID(ErrorMessages.ERROR_CODE_READONLY_USER_STORE.getCode(),
+                    ErrorMessages.ERROR_CODE_READONLY_USER_STORE.getMessage(), userID);
+            throw new UserStoreException(ErrorMessages.ERROR_CODE_READONLY_USER_STORE.toString());
+        }
+
+        // #################### <Listeners> #####################################################
+        try {
+            for (UserStoreManagerListener listener : UMListenerServiceComponent.getUserStoreManagerListeners()) {
+                if (!((AbstractUserStoreManagerListener) listener).deleteUserWithID(userID, this)) {
+                    handleDeleteUserFailureWithID(ErrorMessages.ERROR_CODE_ERROR_DURING_PRE_DELETE_USER.getCode(),
+                            String.format(ErrorMessages.ERROR_CODE_ERROR_DURING_PRE_DELETE_USER.getMessage(),
+                                    UserCoreErrorConstants.PRE_LISTENER_TASKS_FAILED_MESSAGE), userID);
+                    return;
+                }
+            }
+            for (UserOperationEventListener listener : UMListenerServiceComponent.getUserOperationEventListeners()) {
+                if (!((AbstractUserOperationEventListener) listener).doPreDeleteUserWithID(userID, this)) {
+                    handleDeleteUserFailureWithID(ErrorMessages.ERROR_CODE_ERROR_DURING_PRE_DELETE_USER.getCode(),
+                            String.format(ErrorMessages.ERROR_CODE_ERROR_DURING_PRE_DELETE_USER.getMessage(),
+                                    UserCoreErrorConstants.PRE_LISTENER_TASKS_FAILED_MESSAGE), userID);
+
+                    return;
+                }
+            }
+        } catch (UserStoreException e) {
+            handleDeleteUserFailureWithID(ErrorMessages.ERROR_CODE_ERROR_DURING_PRE_DELETE_USER.getCode(),
+                    String.format(ErrorMessages.ERROR_CODE_ERROR_DURING_PRE_DELETE_USER.getMessage(), e.getMessage()),
+                    userID);
+            throw e;
+        }
+        // #################### </Listeners> #####################################################
+
+        if (!doCheckExistingUserWithID(userID)) {
+            String errorMessage = String.format(ErrorMessages.ERROR_CODE_NON_EXISTING_USER.getMessage(), userID,
+                    realmConfig.getUserStoreProperty(UserCoreConstants.RealmConfig.PROPERTY_DOMAIN_NAME));
+            String errorCode = ErrorMessages.ERROR_CODE_NON_EXISTING_USER.getCode();
+            handleDeleteUserFailureWithID(errorCode, errorMessage, userID);
+            throw new UserStoreException(errorCode + " - " + errorMessage);
+        }
+
+        // Remove users from internal role mapping
+        try {
+            hybridRoleManager.deleteUser(UserCoreUtil.addDomainToName(userID, getMyDomainName()));
+
+            doDeleteUserWithID(userID);
+        } catch (UserStoreException e) {
+            handleDeleteUserFailureWithID(ErrorMessages.ERROR_CODE_ERROR_WHILE_DELETING_USER.getCode(),
+                    String.format(ErrorMessages.ERROR_CODE_ERROR_WHILE_DELETING_USER.getMessage(), e.getMessage()),
+                    userID);
+            throw e;
+        }
+
+        // Needs to clear roles cache upon deletion of a user
+        clearUserRolesCache(UserCoreUtil.addDomainToName(userID, getMyDomainName()));
+
+        // #################### <Listeners> #####################################################
+        try {
+            for (UserOperationEventListener listener : UMListenerServiceComponent.getUserOperationEventListeners()) {
+                if (!((AbstractUserOperationEventListener) listener).doPostDeleteUserWithID(userID, this)) {
+                    handleDeleteUserFailureWithID(ErrorMessages.ERROR_CODE_ERROR_DURING_POST_DELETE_USER.getCode(),
+                            String.format(ErrorMessages.ERROR_CODE_ERROR_DURING_POST_DELETE_USER.getMessage(),
+                                    UserCoreErrorConstants.POST_LISTENER_TASKS_FAILED_MESSAGE), userID);
+                    return;
+                }
+            }
+        } catch (UserStoreException ex) {
+            handleDeleteUserFailureWithID(ErrorMessages.ERROR_CODE_ERROR_DURING_POST_DELETE_USER.getCode(),
+                    String.format(ErrorMessages.ERROR_CODE_ERROR_DURING_POST_DELETE_USER.getMessage(), ex.getMessage()),
+                    userID);
+            throw ex;
+        }
+        // #################### </Listeners> #####################################################
+
+    }
+
+    @Override
+    public final void setUserClaimValueWithID(String userID, String claimURI, String claimValue, String profileName)
+            throws UserStoreException {
+
+        UserStore userStore = getUserStoreWithID(userID);
+        if (userStore.isRecurssive()) {
+            ((AbstractUserStoreManager) userStore.getUserStoreManager())
+                    .setUserClaimValueWithID(userStore.getDomainFreeName(), claimURI, claimValue, profileName);
+            return;
+        }
+
+        // #################### Domain Name Free Zone Starts Here ################################
+
+        if (!doCheckExistingUserWithID(userID)) {
+            String errorMessage = String.format(ErrorMessages.ERROR_CODE_NON_EXISTING_USER.getMessage(), userID,
+                    realmConfig.getUserStoreProperty(UserCoreConstants.RealmConfig.PROPERTY_DOMAIN_NAME));
+            String errorCode = ErrorMessages.ERROR_CODE_NON_EXISTING_USER.getCode();
+            handleSetUserClaimValueFailureWithID(errorCode, errorMessage, userID, claimURI, claimValue, profileName);
+            throw new UserStoreException(errorCode + " - " + errorMessage);
+        }
+
+        // #################### <Listeners> #####################################################
+        try {
+            for (UserOperationEventListener listener : UMListenerServiceComponent.getUserOperationEventListeners()) {
+                if (!((AbstractUserOperationEventListener) listener)
+                        .doPreSetUserClaimValueWithID(userID, claimURI, claimValue, profileName, this)) {
+                    handleSetUserClaimValueFailureWithID(
+                            ErrorMessages.ERROR_CODE_ERROR_DURING_PRE_SET_USER_CLAIM_VALUE.getCode(),
+                            String.format(ErrorMessages.ERROR_CODE_ERROR_DURING_PRE_SET_USER_CLAIM_VALUE.getMessage(),
+                                    UserCoreErrorConstants.PRE_LISTENER_TASKS_FAILED_MESSAGE), userID, claimURI,
+                            claimValue, profileName);
+                    return;
+                }
+            }
+        } catch (UserStoreException e) {
+            handleSetUserClaimValueFailureWithID(
+                    ErrorMessages.ERROR_CODE_ERROR_DURING_PRE_SET_USER_CLAIM_VALUE.getCode(),
+                    String.format(ErrorMessages.ERROR_CODE_ERROR_DURING_PRE_SET_USER_CLAIM_VALUE.getMessage(),
+                            e.getMessage()), userID, claimURI, claimValue, profileName);
+            throw e;
+        }
+        // #################### </Listeners> #####################################################
+
+        //Check userstore is readonly or not
+
+        if (isReadOnly()) {
+            handleSetUserClaimValueFailureWithID(ErrorMessages.ERROR_CODE_READONLY_USER_STORE.getCode(),
+                    ErrorMessages.ERROR_CODE_READONLY_USER_STORE.getMessage(), userID, claimURI, claimValue,
+                    profileName);
+            throw new UserStoreException(ErrorMessages.ERROR_CODE_READONLY_USER_STORE.toString());
+        }
+
+        try {
+            doSetUserClaimValueWithID(userID, claimURI, claimValue, profileName);
+        } catch (UserStoreException e) {
+            handleSetUserClaimValueFailureWithID(
+                    ErrorMessages.ERROR_CODE_ERROR_WHILE_SETTING_USER_CLAIM_VALUE.getCode(),
+                    String.format(ErrorMessages.ERROR_CODE_ERROR_WHILE_SETTING_USER_CLAIM_VALUE.getMessage(),
+                            e.getMessage()), userID, claimURI, claimValue, profileName);
+            throw e;
+        }
+
+        // #################### <Listeners> #####################################################
+        try {
+            for (UserOperationEventListener listener : UMListenerServiceComponent.getUserOperationEventListeners()) {
+                if (!((AbstractUserOperationEventListener) listener).doPostSetUserClaimValueWithID(userID, this)) {
+                    handleSetUserClaimValueFailureWithID(
+                            ErrorMessages.ERROR_CODE_ERROR_DURING_POST_SET_USER_CLAIM_VALUE.getCode(),
+                            String.format(ErrorMessages.ERROR_CODE_ERROR_DURING_POST_SET_USER_CLAIM_VALUE.getMessage(),
+                                    UserCoreErrorConstants.POST_LISTENER_TASKS_FAILED_MESSAGE), userID, claimURI,
+                            claimValue, profileName);
+                    return;
+                }
+            }
+        } catch (UserStoreException e) {
+            handleSetUserClaimValueFailureWithID(
+                    ErrorMessages.ERROR_CODE_ERROR_DURING_POST_SET_USER_CLAIM_VALUE.getCode(),
+                    String.format(ErrorMessages.ERROR_CODE_ERROR_DURING_POST_SET_USER_CLAIM_VALUE.getMessage(),
+                            e.getMessage()), userID, claimURI, claimValue, profileName);
+            throw e;
+        }
+        // #################### </Listeners> #####################################################
+
+    }
+
+    @Override
+    public final void setUserClaimValuesWithID(String userID, Map<String, String> claims, String profileName)
+            throws UserStoreException {
+
+        UserStore userStore = getUserStoreWithID(userID);
+        if (userStore.isRecurssive()) {
+            ((AbstractUserStoreManager) userStore.getUserStoreManager())
+                    .setUserClaimValuesWithID(userStore.getDomainFreeName(), claims, profileName);
+            return;
+        }
+
+        // #################### Domain Name Free Zone Starts Here ################################
+
+        if (!doCheckExistingUserWithID(userID)) {
+            String errorMessage = String.format(ErrorMessages.ERROR_CODE_NON_EXISTING_USER.getMessage(), userID,
+                    realmConfig.getUserStoreProperty(UserCoreConstants.RealmConfig.PROPERTY_DOMAIN_NAME));
+            String errorCode = ErrorMessages.ERROR_CODE_NON_EXISTING_USER.getCode();
+            handleSetUserClaimValuesFailureWithID(errorCode, errorMessage, userID, claims, profileName);
+            throw new UserStoreException(errorCode + " - " + errorMessage);
+        }
+        if (claims == null) {
+            claims = new HashMap<>();
+        }
+        // #################### <Listeners> #####################################################
+        try {
+            for (UserOperationEventListener listener : UMListenerServiceComponent.getUserOperationEventListeners()) {
+                if (!((AbstractUserOperationEventListener) listener)
+                        .doPreSetUserClaimValuesWithID(userID, claims, profileName, this)) {
+                    handleSetUserClaimValuesFailureWithID(
+                            ErrorMessages.ERROR_CODE_ERROR_DURING_PRE_SET_USER_CLAIM_VALUES.getCode(),
+                            String.format(ErrorMessages.ERROR_CODE_ERROR_DURING_PRE_SET_USER_CLAIM_VALUES.getMessage(),
+                                    UserCoreErrorConstants.PRE_LISTENER_TASKS_FAILED_MESSAGE), userID, claims,
+                            profileName);
+                    return;
+                }
+            }
+        } catch (UserStoreException e) {
+            handleSetUserClaimValuesFailureWithID(
+                    ErrorMessages.ERROR_CODE_ERROR_DURING_PRE_SET_USER_CLAIM_VALUES.getCode(),
+                    String.format(ErrorMessages.ERROR_CODE_ERROR_DURING_PRE_SET_USER_CLAIM_VALUES.getMessage(),
+                            e.getMessage()), userID, claims, profileName);
+            throw e;
+        }
+        // #################### </Listeners> #####################################################
+
+        //If user store is readonly this method should not get invoked with non empty claim set.
+
+        if (isReadOnly() && !claims.isEmpty()) {
+            handleSetUserClaimValuesFailureWithID(ErrorMessages.ERROR_CODE_READONLY_USER_STORE.getCode(),
+                    ErrorMessages.ERROR_CODE_READONLY_USER_STORE.getMessage(), userID, claims, profileName);
+            throw new UserStoreException(ErrorMessages.ERROR_CODE_READONLY_USER_STORE.toString());
+        }
+
+        // set claim values if user store is not read only.
+
+        try {
+            if (!isReadOnly()) {
+                doSetUserClaimValuesWithID(userID, claims, profileName);
+            }
+        } catch (UserStoreException e) {
+            handleSetUserClaimValuesFailureWithID(
+                    ErrorMessages.ERROR_CODE_ERROR_WHILE_SETTING_USER_CLAIM_VALUES.getCode(),
+                    String.format(ErrorMessages.ERROR_CODE_ERROR_WHILE_SETTING_USER_CLAIM_VALUES.getMessage(),
+                            e.getMessage()), userID, claims, profileName);
+            throw e;
+        }
+
+        // #################### <Listeners> #####################################################
+        try {
+            for (UserOperationEventListener listener : UMListenerServiceComponent.getUserOperationEventListeners()) {
+                if (!((AbstractUserOperationEventListener) listener)
+                        .doPostSetUserClaimValuesWithID(userID, claims, profileName, this)) {
+                    handleSetUserClaimValuesFailureWithID(
+                            ErrorMessages.ERROR_CODE_ERROR_DURING_POST_SET_USER_CLAIM_VALUES.getCode(),
+                            String.format(ErrorMessages.ERROR_CODE_ERROR_DURING_POST_SET_USER_CLAIM_VALUES.getMessage(),
+                                    UserCoreErrorConstants.POST_LISTENER_TASKS_FAILED_MESSAGE), userID, claims,
+                            profileName);
+                    return;
+                }
+            }
+        } catch (UserStoreException e) {
+            handleSetUserClaimValuesFailureWithID(
+                    ErrorMessages.ERROR_CODE_ERROR_DURING_POST_SET_USER_CLAIM_VALUES.getCode(),
+                    String.format(ErrorMessages.ERROR_CODE_ERROR_DURING_POST_SET_USER_CLAIM_VALUES.getMessage(),
+                            e.getMessage()), userID, claims, profileName);
+            throw e;
+        }
+        // #################### </Listeners> #####################################################
+
+    }
+
+    @Override
+    public final void updateCredentialByAdminWithID(String userName, Object newCredential) throws UserStoreException {
+
+        if (!isSecureCall.get()) {
+            Class argTypes[] = new Class[] { String.class, Object.class };
+            callSecure("updateCredentialByAdminWithID", new Object[] { userName, newCredential }, argTypes);
+            return;
+        }
+
+        UserStore userStore = getUserStoreWithID(userName);
+        if (userStore.isRecurssive()) {
+            ((AbstractUserStoreManager) userStore.getUserStoreManager())
+                    .updateCredentialByAdminWithID(userStore.getDomainFreeName(), newCredential);
+            return;
+        }
+
+        // #################### Domain Name Free Zone Starts Here ################################
+
+        if (isReadOnly()) {
+            handleUpdateCredentialByAdminFailureWithID(ErrorMessages.ERROR_CODE_READONLY_USER_STORE.getCode(),
+                    ErrorMessages.ERROR_CODE_READONLY_USER_STORE.getMessage(), userName, newCredential);
+            throw new UserStoreException(ErrorMessages.ERROR_CODE_READONLY_USER_STORE.toString());
+        }
+
+        Secret newCredentialObj;
+        try {
+            newCredentialObj = Secret.getSecret(newCredential);
+        } catch (UnsupportedSecretTypeException e) {
+            handleUpdateCredentialByAdminFailureWithID(ErrorMessages.ERROR_CODE_UNSUPPORTED_CREDENTIAL_TYPE.getCode(),
+                    ErrorMessages.ERROR_CODE_UNSUPPORTED_CREDENTIAL_TYPE.getMessage() + " " + e.getMessage(), userName,
+                    newCredential);
+            throw new UserStoreException(ErrorMessages.ERROR_CODE_UNSUPPORTED_CREDENTIAL_TYPE.toString(), e);
+        }
+
+        try {
+            try {
+                // #################### <Listeners> #####################################################
+                for (UserStoreManagerListener listener : UMListenerServiceComponent.getUserStoreManagerListeners()) {
+                    Object credentialArgument;
+                    if (listener instanceof SecretHandleableListener) {
+                        credentialArgument = newCredentialObj;
+                    } else {
+                        credentialArgument = newCredential;
+                    }
+
+                    if (!((AbstractUserStoreManagerListener) listener)
+                            .updateCredentialByAdmin(userName, credentialArgument, this)) {
+                        handleUpdateCredentialByAdminFailureWithID(
+                                ErrorMessages.ERROR_CODE_ERROR_DURING_PRE_UPDATE_CREDENTIAL_BY_ADMIN.getCode(),
+                                String.format(ErrorMessages.ERROR_CODE_ERROR_DURING_PRE_UPDATE_CREDENTIAL_BY_ADMIN
+                                        .getMessage(), UserCoreErrorConstants.PRE_LISTENER_TASKS_FAILED_MESSAGE),
+                                userName, credentialArgument);
+                        return;
+                    }
+                }
+
+                // using string buffers to allow the password to be changed by listener
+                for (UserOperationEventListener listener : UMListenerServiceComponent
+                        .getUserOperationEventListeners()) {
+
+                    if (listener instanceof SecretHandleableListener) {
+                        if (!((AbstractUserOperationEventListener) listener)
+                                .doPreUpdateCredentialByAdminWithID(userName, newCredentialObj, this)) {
+                            handleUpdateCredentialByAdminFailureWithID(
+                                    ErrorMessages.ERROR_CODE_ERROR_DURING_PRE_UPDATE_CREDENTIAL_BY_ADMIN.getCode(),
+                                    String.format(ErrorMessages.ERROR_CODE_ERROR_DURING_PRE_UPDATE_CREDENTIAL_BY_ADMIN
+                                            .getMessage(), UserCoreErrorConstants.PRE_LISTENER_TASKS_FAILED_MESSAGE),
+                                    userName, newCredentialObj);
+                            return;
+                        }
+                    } else {
+                        // using string buffers to allow the password to be changed by listener
+                        StringBuffer credBuff = null;
+                        if (newCredential == null) { // a default password will be set
+                            credBuff = new StringBuffer();
+                        } else if (newCredential instanceof String) {
+                            credBuff = new StringBuffer((String) newCredential);
+                        }
+
+                        if (credBuff != null) {
+                            if (!((AbstractUserOperationEventListener) listener)
+                                    .doPreUpdateCredentialByAdminWithID(userName, credBuff, this)) {
+                                handleUpdateCredentialByAdminFailureWithID(
+                                        ErrorMessages.ERROR_CODE_ERROR_DURING_PRE_UPDATE_CREDENTIAL_BY_ADMIN.getCode(),
+                                        String.format(
+                                                ErrorMessages.ERROR_CODE_ERROR_DURING_PRE_UPDATE_CREDENTIAL_BY_ADMIN
+                                                        .getMessage(),
+                                                UserCoreErrorConstants.PRE_LISTENER_TASKS_FAILED_MESSAGE), userName,
+                                        credBuff);
+                                return;
+                            }
+                            // reading the modified value
+                            newCredential = credBuff.toString();
+                            newCredentialObj.clear();
+                            try {
+                                newCredentialObj = Secret.getSecret(newCredential);
+                            } catch (UnsupportedSecretTypeException e) {
+                                handleUpdateCredentialByAdminFailureWithID(
+                                        ErrorMessages.ERROR_CODE_UNSUPPORTED_CREDENTIAL_TYPE.getCode(),
+                                        ErrorMessages.ERROR_CODE_UNSUPPORTED_CREDENTIAL_TYPE.getMessage() + " " + e
+                                                .getMessage(), userName, newCredential);
+                                throw new UserStoreException(
+                                        ErrorMessages.ERROR_CODE_UNSUPPORTED_CREDENTIAL_TYPE.toString(), e);
+                            }
+                        }
+                    }
+                }
+            } catch (UserStoreException ex) {
+                handleUpdateCredentialByAdminFailureWithID(
+                        ErrorMessages.ERROR_CODE_ERROR_DURING_PRE_UPDATE_CREDENTIAL_BY_ADMIN.getCode(),
+                        String.format(ErrorMessages.ERROR_CODE_ERROR_DURING_PRE_UPDATE_CREDENTIAL_BY_ADMIN.getMessage(),
+                                ex.getMessage()), userName, newCredential);
+                throw ex;
+            }
+            // #################### </Listeners> #####################################################
+
+            if (!checkUserPasswordValid(newCredential)) {
+                String errorMsg = realmConfig.getUserStoreProperty(PROPERTY_PASSWORD_ERROR_MSG);
+
+                if (errorMsg != null) {
+                    String errorCode = ErrorMessages.ERROR_CODE_ERROR_DURING_PRE_UPDATE_CREDENTIAL_BY_ADMIN.getCode();
+                    String errorMessage = String
+                            .format(ErrorMessages.ERROR_CODE_ERROR_DURING_PRE_UPDATE_CREDENTIAL_BY_ADMIN.getMessage(),
+                                    errorMsg);
+                    handleUpdateCredentialByAdminFailureWithID(errorCode, errorMessage, userName, newCredential);
+                    throw new UserStoreException(errorCode + " - " + errorMessage);
+                }
+
+                String errorCode = ErrorMessages.ERROR_CODE_INVALID_PASSWORD.getCode();
+                String errorMessage = String.format(ErrorMessages.ERROR_CODE_INVALID_PASSWORD.getMessage(),
+                        realmConfig.getUserStoreProperty(UserCoreConstants.RealmConfig.PROPERTY_JAVA_REG_EX));
+                handleUpdateCredentialByAdminFailureWithID(errorCode, errorMessage, userName, newCredential);
+                throw new UserStoreException(errorCode + " - " + errorMessage);
+            }
+
+            if (!doCheckExistingUserWithID(userStore.getDomainFreeName())) {
+                String errorMessage = String.format(ErrorMessages.ERROR_CODE_NON_EXISTING_USER.getMessage(), userName,
+                        realmConfig.getUserStoreProperty(UserCoreConstants.RealmConfig.PROPERTY_DOMAIN_NAME));
+                String errorCode = ErrorMessages.ERROR_CODE_NON_EXISTING_USER.getCode();
+                handleUpdateCredentialByAdminFailureWithID(errorCode, errorMessage, userName, newCredential);
+                throw new UserStoreException(errorCode + "-" + errorMessage);
+            }
+
+            try {
+                doUpdateCredentialByAdminWithID(userName, newCredentialObj);
+            } catch (UserStoreException ex) {
+                handleUpdateCredentialByAdminFailureWithID(
+                        ErrorMessages.ERROR_CODE_ERROR_WHILE_UPDATING_CREDENTIAL_BY_ADMIN.getCode(),
+                        String.format(ErrorMessages.ERROR_CODE_ERROR_WHILE_UPDATING_CREDENTIAL_BY_ADMIN.getMessage(),
+                                ex.getMessage()), userName, newCredentialObj);
+                throw ex;
+            }
+
+            // #################### <Listeners> #####################################################
+            try {
+                for (UserOperationEventListener listener : UMListenerServiceComponent
+                        .getUserOperationEventListeners()) {
+                    Object credentialArgument;
+                    if (listener instanceof SecretHandleableListener) {
+                        credentialArgument = newCredentialObj;
+                    } else {
+                        credentialArgument = newCredential;
+                    }
+
+                    if (!((AbstractUserOperationEventListener) listener)
+                            .doPostUpdateCredentialByAdminWithID(userName, credentialArgument, this)) {
+                        handleUpdateCredentialByAdminFailureWithID(
+                                ErrorMessages.ERROR_CODE_ERROR_DURING_POST_UPDATE_CREDENTIAL_BY_ADMIN.getCode(),
+                                String.format(ErrorMessages.ERROR_CODE_ERROR_DURING_POST_UPDATE_CREDENTIAL_BY_ADMIN
+                                        .getMessage(), UserCoreErrorConstants.POST_LISTENER_TASKS_FAILED_MESSAGE),
+                                userName, newCredential);
+                        return;
+                    }
+                }
+            } catch (UserStoreException ex) {
+                handleUpdateCredentialByAdminFailureWithID(
+                        ErrorMessages.ERROR_CODE_ERROR_DURING_POST_UPDATE_CREDENTIAL_BY_ADMIN.getCode(), String.format(
+                                ErrorMessages.ERROR_CODE_ERROR_DURING_POST_UPDATE_CREDENTIAL_BY_ADMIN.getMessage(),
+                                ex.getMessage()), userName, newCredential);
+                throw ex;
+            }
+        } finally {
+            newCredentialObj.clear();
+        }
+        // #################### </Listeners> #####################################################
+
+    }
+
+    @Override
+    public final void deleteUserClaimValueWithID(String userID, String claimURI, String profileName)
+            throws UserStoreException {
+
+        if (!isSecureCall.get()) {
+            Class argTypes[] = new Class[] { String.class, String.class, String.class };
+            callSecure("deleteUserClaimValue", new Object[] { userID, claimURI, profileName }, argTypes);
+            return;
+        }
+
+        UserStore userStore = getUserStoreWithID(userID);
+        if (userStore.isRecurssive()) {
+            ((AbstractUserStoreManager) userStore.getUserStoreManager())
+                    .deleteUserClaimValueWithID(userStore.getDomainFreeName(), claimURI, profileName);
+            return;
+        }
+
+        if (isReadOnly()) {
+            handleDeleteUserClaimValueFailureWithID(ErrorMessages.ERROR_CODE_READONLY_USER_STORE.getCode(),
+                    ErrorMessages.ERROR_CODE_READONLY_USER_STORE.getMessage(), userID, claimURI, profileName);
+            throw new UserStoreException(ErrorMessages.ERROR_CODE_READONLY_USER_STORE.toString());
+        }
+
+        if (!doCheckExistingUserWithID(userID)) {
+            String errorMessage = String.format(ErrorMessages.ERROR_CODE_NON_EXISTING_USER.getMessage(), userID,
+                    realmConfig.getUserStoreProperty(UserCoreConstants.RealmConfig.PROPERTY_DOMAIN_NAME));
+            String errorCode = ErrorMessages.ERROR_CODE_NON_EXISTING_USER.getCode();
+            handleDeleteUserClaimValueFailureWithID(errorCode, errorMessage, userID, claimURI, profileName);
+            throw new UserStoreException(errorCode + " - " + errorMessage);
+        }
+
+        // #################### <Listeners> #####################################################
+        try {
+            for (UserOperationEventListener listener : UMListenerServiceComponent.getUserOperationEventListeners()) {
+                if (!((AbstractUserOperationEventListener) listener)
+                        .doPreDeleteUserClaimValueWithID(userID, claimURI, profileName, this)) {
+                    handleDeleteUserClaimValueFailureWithID(
+                            ErrorMessages.ERROR_CODE_ERROR_DURING_PRE_DELETE_USER_CLAIM_VALUE.getCode(), String.format(
+                                    ErrorMessages.ERROR_CODE_ERROR_DURING_PRE_DELETE_USER_CLAIM_VALUE.getMessage(),
+                                    UserCoreErrorConstants.PRE_LISTENER_TASKS_FAILED_MESSAGE), userID, claimURI,
+                            profileName);
+                    return;
+                }
+            }
+            // #################### </Listeners> #####################################################
+        } catch (UserStoreException ex) {
+            handleDeleteUserClaimValueFailureWithID(
+                    ErrorMessages.ERROR_CODE_ERROR_DURING_PRE_DELETE_USER_CLAIM_VALUE.getCode(),
+                    String.format(ErrorMessages.ERROR_CODE_ERROR_DURING_PRE_DELETE_USER_CLAIM_VALUE.getMessage(),
+                            ex.getMessage()), userID, claimURI, profileName);
+            throw ex;
+        }
+
+        try {
+            doDeleteUserClaimValueWithID(userID, claimURI, profileName);
+        } catch (UserStoreException ex) {
+            handleDeleteUserClaimValueFailureWithID(
+                    ErrorMessages.ERROR_CODE_ERROR_WHILE_DELETING_USER_CLAIM_VALUE.getCode(),
+                    String.format(ErrorMessages.ERROR_CODE_ERROR_WHILE_DELETING_USER_CLAIM_VALUE.getMessage(),
+                            ex.getMessage()), userID, claimURI, profileName);
+            throw ex;
+        }
+
+        // #################### <Listeners> #####################################################
+        try {
+            for (UserOperationEventListener listener : UMListenerServiceComponent.getUserOperationEventListeners()) {
+                if (!((AbstractUserOperationEventListener) listener).doPostDeleteUserClaimValueWithID(userID, this)) {
+                    handleDeleteUserClaimValueFailureWithID(
+                            ErrorMessages.ERROR_CODE_ERROR_DURING_POST_DELETE_USER_CLAIM_VALUE.getCode(), String.format(
+                                    ErrorMessages.ERROR_CODE_ERROR_DURING_POST_DELETE_USER_CLAIM_VALUE.getMessage(),
+                                    UserCoreErrorConstants.POST_LISTENER_TASKS_FAILED_MESSAGE), userID, claimURI,
+                            profileName);
+                    return;
+                }
+            }
+        } catch (UserStoreException ex) {
+            handleDeleteUserClaimValueFailureWithID(
+                    ErrorMessages.ERROR_CODE_ERROR_DURING_POST_DELETE_USER_CLAIM_VALUE.getCode(),
+                    String.format(ErrorMessages.ERROR_CODE_ERROR_DURING_POST_DELETE_USER_CLAIM_VALUE.getMessage(),
+                            ex.getMessage()), userID, claimURI, profileName);
+            throw ex;
+        }
+        // #################### </Listeners> #####################################################
+    }
+
+    @Override
+    public final void deleteUserClaimValuesWithID(String userID, String[] claims, String profileName)
+            throws UserStoreException {
+
+        if (!isSecureCall.get()) {
+            Class argTypes[] = new Class[] { String.class, String[].class, String.class };
+            callSecure("deleteUserClaimValues", new Object[] { userID, claims, profileName }, argTypes);
+            return;
+        }
+
+        UserStore userStore = getUserStoreWithID(userID);
+        if (userStore.isRecurssive()) {
+            ((AbstractUserStoreManager) userStore.getUserStoreManager())
+                    .deleteUserClaimValuesWithID(userStore.getDomainFreeName(), claims, profileName);
+            return;
+        }
+
+        if (isReadOnly()) {
+            handleDeleteUserClaimValuesFailureWithID(ErrorMessages.ERROR_CODE_READONLY_USER_STORE.getCode(),
+                    ErrorMessages.ERROR_CODE_READONLY_USER_STORE.getMessage(), userID, claims, profileName);
+            throw new UserStoreException(ErrorMessages.ERROR_CODE_READONLY_USER_STORE.toString());
+        }
+
+        if (!doCheckExistingUserWithID(userID)) {
+            String errorMessage = String.format(ErrorMessages.ERROR_CODE_NON_EXISTING_USER.getMessage(), userID,
+                    realmConfig.getUserStoreProperty(UserCoreConstants.RealmConfig.PROPERTY_DOMAIN_NAME));
+            String errorCode = ErrorMessages.ERROR_CODE_NON_EXISTING_USER.getCode();
+            handleDeleteUserClaimValuesFailureWithID(errorCode, errorMessage, userID, claims, profileName);
+            throw new UserStoreException(errorCode + " - " + errorMessage);
+        }
+
+        if (claims == null) {
+            claims = new String[0];
+        }
+        // #################### <Listeners> #####################################################
+        try {
+            for (UserOperationEventListener listener : UMListenerServiceComponent.getUserOperationEventListeners()) {
+                if (!((AbstractUserOperationEventListener) listener)
+                        .doPreDeleteUserClaimValuesWithID(userID, claims, profileName, this)) {
+                    handleDeleteUserClaimValuesFailureWithID(
+                            ErrorMessages.ERROR_CODE_ERROR_DURING_PRE_DELETE_USER_CLAIM_VALUES.getCode(), String.format(
+                                    ErrorMessages.ERROR_CODE_ERROR_DURING_PRE_DELETE_USER_CLAIM_VALUES.getMessage(),
+                                    UserCoreErrorConstants.PRE_LISTENER_TASKS_FAILED_MESSAGE), userID, claims,
+                            profileName);
+                    return;
+                }
+            }
+            // #################### </Listeners> #####################################################
+        } catch (UserStoreException ex) {
+            handleDeleteUserClaimValuesFailureWithID(
+                    ErrorMessages.ERROR_CODE_ERROR_DURING_PRE_DELETE_USER_CLAIM_VALUES.getCode(),
+                    String.format(ErrorMessages.ERROR_CODE_ERROR_DURING_PRE_DELETE_USER_CLAIM_VALUES.getMessage(),
+                            ex.getMessage()), userID, claims, profileName);
+            throw ex;
+        }
+
+        try {
+            doDeleteUserClaimValuesWithID(userID, claims, profileName);
+        } catch (UserStoreException ex) {
+            handleDeleteUserClaimValuesFailureWithID(
+                    ErrorMessages.ERROR_CODE_ERROR_WHILE_DELETING_USER_CLAIM_VALUES.getCode(),
+                    String.format(ErrorMessages.ERROR_CODE_ERROR_WHILE_DELETING_USER_CLAIM_VALUES.getMessage(),
+                            ex.getMessage()), userID, claims, profileName);
+            throw ex;
+        }
+        // #################### <Listeners> #####################################################
+        try {
+            for (UserOperationEventListener listener : UMListenerServiceComponent.getUserOperationEventListeners()) {
+                if (!((AbstractUserOperationEventListener) listener).doPostDeleteUserClaimValuesWithID(userID, this)) {
+                    handleDeleteUserClaimValuesFailureWithID(
+                            ErrorMessages.ERROR_CODE_ERROR_DURING_POST_DELETE_USER_CLAIM_VALUES.getCode(),
+                            String.format(
+                                    ErrorMessages.ERROR_CODE_ERROR_DURING_POST_DELETE_USER_CLAIM_VALUES.getMessage(),
+                                    UserCoreErrorConstants.POST_LISTENER_TASKS_FAILED_MESSAGE), userID, claims,
+                            profileName);
+                    return;
+                }
+            }
+        } catch (UserStoreException ex) {
+            handleDeleteUserClaimValuesFailureWithID(
+                    ErrorMessages.ERROR_CODE_ERROR_DURING_POST_DELETE_USER_CLAIM_VALUES.getCode(),
+                    String.format(ErrorMessages.ERROR_CODE_ERROR_DURING_POST_DELETE_USER_CLAIM_VALUES.getMessage(),
+                            ex.getMessage()), userID, claims, profileName);
+            throw ex;
+        }
+        // #################### </Listeners> #####################################################
+
+    }
+
+    @Override
+    public Date getPasswordExpirationTimeWithID(String userID) throws UserStoreException {
+
+        UserStore userStore = getUserStoreWithID(userID);
+        if (userStore.isRecurssive()) {
+            return ((AbstractUserStoreManager) userStore.getUserStoreManager())
+                    .getPasswordExpirationTimeWithID(userStore.getDomainFreeName());
+        }
+        return null;
+    }
+
+    @Override
+    public final void updateRoleListOfUserWithID(final String userID, final String[] deletedRoles,
+            final String[] newRoles) throws UserStoreException {
+        try {
+            AccessController.doPrivileged(new PrivilegedExceptionAction<String>() {
+                @Override
+                public String run() throws Exception {
+                    updateRoleListOfUserInternalWithID(userID, deletedRoles, newRoles);
+                    return null;
+                }
+            });
+        } catch (PrivilegedActionException e) {
+            if (!(e.getException() instanceof UserStoreException)) {
+                handleUpdateRoleListOfUserFailureWithID(
+                        ErrorMessages.ERROR_CODE_ERROR_DURING_UPDATE_USERS_OF_ROLE.getCode(),
+                        String.format(ErrorMessages.ERROR_CODE_ERROR_DURING_UPDATE_USERS_OF_ROLE.getMessage(),
+                                e.getMessage()), userID, deletedRoles, newRoles);
+            }
+            throw (UserStoreException) e.getException();
+        }
+    }
+
+    private final void updateRoleListOfUserInternalWithID(String userID, String[] deletedRoles, String[] newRoles)
+            throws UserStoreException {
+
+        String primaryDomain = realmConfig.getUserStoreProperty(UserCoreConstants.RealmConfig.PROPERTY_DOMAIN_NAME);
+        if (primaryDomain != null) {
+            primaryDomain += CarbonConstants.DOMAIN_SEPARATOR;
+        }
+
+        if (deletedRoles != null && deletedRoles.length > 0) {
+            Arrays.sort(deletedRoles);
+            if (UserCoreUtil.isPrimaryAdminUser(userID, realmConfig)) {
+                for (int i = 0; i < deletedRoles.length; i++) {
+                    if (deletedRoles[i].equalsIgnoreCase(realmConfig.getAdminRoleName()) || (primaryDomain
+                            + deletedRoles[i]).equalsIgnoreCase(realmConfig.getAdminRoleName())) {
+                        handleUpdateRoleListOfUserFailureWithID(
+                                ErrorMessages.ERROR_CODE_CANNOT_REMOVE_ADMIN_ROLE_FROM_ADMIN.getCode(),
+                                ErrorMessages.ERROR_CODE_CANNOT_REMOVE_ADMIN_ROLE_FROM_ADMIN.getMessage(), userID,
+                                deletedRoles, newRoles);
+                        throw new UserStoreException(
+                                ErrorMessages.ERROR_CODE_CANNOT_REMOVE_ADMIN_ROLE_FROM_ADMIN.toString());
+                    }
+                }
+            }
+        }
+
+        UserStore userStore = getUserStoreWithID(userID);
+        if (userStore.isRecurssive()) {
+            ((AbstractUserStoreManager) userStore.getUserStoreManager())
+                    .updateRoleListOfUserWithID(userStore.getDomainFreeName(),
+                            UserCoreUtil.removeDomainFromNames(deletedRoles),
+                            UserCoreUtil.removeDomainFromNames(newRoles));
+            return;
+        }
+
+        if (userStore.isSystemStore()) {
+            systemUserRoleManager.updateSystemRoleListOfUser(userStore.getDomainFreeName(),
+                    UserCoreUtil.removeDomainFromNames(deletedRoles), UserCoreUtil.removeDomainFromNames(newRoles));
+            return;
+        }
+
+        // #################### Domain Name Free Zone Starts Here ################################
+        if (deletedRoles == null) {
+            deletedRoles = new String[0];
+        }
+        if (newRoles == null) {
+            newRoles = new String[0];
+        }
+        // This happens only once during first startup - adding administrator user/role.
+        if (userID.indexOf(CarbonConstants.DOMAIN_SEPARATOR) > 0) {
+            userID = userStore.getDomainFreeName();
+            deletedRoles = UserCoreUtil.removeDomainFromNames(deletedRoles);
+            newRoles = UserCoreUtil.removeDomainFromNames(newRoles);
+        }
+
+        List<String> internalRoleDel = new ArrayList<>();
+        List<String> internalRoleNew = new ArrayList<>();
+
+        List<String> roleDel = new ArrayList<>();
+        List<String> roleNew = new ArrayList<>();
+
+        if (deletedRoles != null && deletedRoles.length > 0) {
+            for (String deleteRole : deletedRoles) {
+                if (UserCoreUtil.isEveryoneRole(deleteRole, realmConfig)) {
+                    handleUpdateRoleListOfUserFailureWithID(
+                            ErrorMessages.ERROR_CODE_CANNOT_UPDATE_EVERYONE_ROLE.getCode(),
+                            ErrorMessages.ERROR_CODE_CANNOT_UPDATE_EVERYONE_ROLE.getMessage(), userID, deletedRoles,
+                            newRoles);
+                    throw new UserStoreException(ErrorMessages.ERROR_CODE_CANNOT_UPDATE_EVERYONE_ROLE.toString());
+                }
+                String domain = null;
+                int index1 = deleteRole.indexOf(CarbonConstants.DOMAIN_SEPARATOR);
+                if (index1 > 0) {
+                    domain = deleteRole.substring(0, index1);
+                }
+                if (APPLICATION_DOMAIN.equalsIgnoreCase(domain) || WORKFLOW_DOMAIN.equalsIgnoreCase(domain)) {
+                    internalRoleDel.add(deleteRole);
+                } else if (UserCoreConstants.INTERNAL_DOMAIN.equalsIgnoreCase(domain) || this.isReadOnly()) {
+                    internalRoleDel.add(UserCoreUtil.removeDomainFromName(deleteRole));
+                } else {
+                    // This is domain free role name.
+                    roleDel.add(UserCoreUtil.removeDomainFromName(deleteRole));
+                }
+            }
+            deletedRoles = roleDel.toArray(new String[roleDel.size()]);
+        }
+
+        if (newRoles != null && newRoles.length > 0) {
+            for (String newRole : newRoles) {
+                if (UserCoreUtil.isEveryoneRole(newRole, realmConfig)) {
+                    handleUpdateRoleListOfUserFailureWithID(
+                            ErrorMessages.ERROR_CODE_CANNOT_UPDATE_EVERYONE_ROLE.getCode(),
+                            ErrorMessages.ERROR_CODE_CANNOT_UPDATE_EVERYONE_ROLE.getMessage(), userID, deletedRoles,
+                            newRoles);
+                    throw new UserStoreException(ErrorMessages.ERROR_CODE_CANNOT_UPDATE_EVERYONE_ROLE.toString());
+                }
+                String domain = null;
+                int index2 = newRole.indexOf(CarbonConstants.DOMAIN_SEPARATOR);
+                if (index2 > 0) {
+                    domain = newRole.substring(0, index2);
+                }
+
+                if (UserCoreConstants.INTERNAL_DOMAIN.equalsIgnoreCase(domain)) {
+                    // If this is an internal role.
+                    internalRoleNew.add(UserCoreUtil.removeDomainFromName(newRole));
+                } else if (APPLICATION_DOMAIN.equalsIgnoreCase(domain) || WORKFLOW_DOMAIN.equalsIgnoreCase(domain)) {
+                    // If this is an application role or workflow role.
+                    internalRoleNew.add(newRole);
+                } else if (this.isReadOnly()) {
+                    // If this is a readonly user store, we add even normal roles as internal roles.
+                    internalRoleNew.add(UserCoreUtil.removeDomainFromName(newRole));
+                } else {
+                    roleNew.add(UserCoreUtil.removeDomainFromName(newRole));
+                }
+            }
+            newRoles = roleNew.toArray(new String[roleNew.size()]);
+        }
+
+        if (internalRoleDel.size() > 0 || internalRoleNew.size() > 0) {
+            hybridRoleManager.updateHybridRoleListOfUser(userStore.getDomainFreeName(),
+                    internalRoleDel.toArray(new String[internalRoleDel.size()]),
+                    internalRoleNew.toArray(new String[internalRoleNew.size()]));
+        }
+
+        // #################### <Listeners> #####################################################
+        try {
+            for (UserOperationEventListener listener : UMListenerServiceComponent.getUserOperationEventListeners()) {
+                if (!((AbstractUserOperationEventListener) listener)
+                        .doPreUpdateRoleListOfUserWithID(userID, deletedRoles, newRoles, this)) {
+                    handleUpdateRoleListOfUserFailureWithID(
+                            ErrorMessages.ERROR_CODE_ERROR_DURING_PRE_UPDATE_ROLE_OF_USER.getCode(),
+                            String.format(ErrorMessages.ERROR_CODE_ERROR_DURING_PRE_UPDATE_ROLE_OF_USER.getMessage(),
+                                    UserCoreErrorConstants.PRE_LISTENER_TASKS_FAILED_MESSAGE), userID, deletedRoles,
+                            newRoles);
+                    return;
+                }
+            }
+        } catch (UserStoreException ex) {
+            handleUpdateRoleListOfUserFailureWithID(
+                    ErrorMessages.ERROR_CODE_ERROR_DURING_PRE_UPDATE_ROLE_OF_USER.getCode(),
+                    String.format(ErrorMessages.ERROR_CODE_ERROR_DURING_PRE_UPDATE_ROLE_OF_USER.getMessage(),
+                            ex.getMessage()), userID, deletedRoles, newRoles);
+            throw ex;
+        }
+        // #################### </Listeners> #####################################################
+
+        if ((deletedRoles != null && deletedRoles.length > 0) || (newRoles != null && newRoles.length > 0)) {
+            if (!isReadOnly() && writeGroupsEnabled) {
+                try {
+                    doUpdateRoleListOfUserWithID(userID, deletedRoles, newRoles);
+                } catch (UserStoreException ex) {
+                    handleUpdateRoleListOfUserFailureWithID(
+                            ErrorMessages.ERROR_CODE_ERROR_WHILE_UPDATING_ROLE_OF_USER.getCode(),
+                            String.format(ErrorMessages.ERROR_CODE_ERROR_WHILE_UPDATING_ROLE_OF_USER.getMessage(),
+                                    ex.getMessage()), userID, deletedRoles, newRoles);
+                    throw ex;
+                }
+            } else {
+                handleUpdateRoleListOfUserFailureWithID(ErrorMessages.ERROR_CODE_READONLY_USER_STORE.getCode(),
+                        ErrorMessages.ERROR_CODE_READONLY_USER_STORE.getMessage(), userID, deletedRoles, newRoles);
+                throw new UserStoreException(ErrorMessages.ERROR_CODE_READONLY_USER_STORE.toString());
+            }
+        }
+
+        clearUserRolesCache(UserCoreUtil.addDomainToName(userID, getMyDomainName()));
+
+        // Call the relevant listeners after updating the role list of user.
+        try {
+            for (UserOperationEventListener listener : UMListenerServiceComponent.getUserOperationEventListeners()) {
+                if (!((AbstractUserOperationEventListener) listener)
+                        .doPostUpdateRoleListOfUserWithID(userID, deletedRoles, newRoles, this)) {
+                    handleUpdateRoleListOfUserFailureWithID(
+                            ErrorMessages.ERROR_CODE_ERROR_DURING_POST_UPDATE_ROLE_OF_USER.getCode(),
+                            String.format(ErrorMessages.ERROR_CODE_ERROR_DURING_POST_UPDATE_ROLE_OF_USER.getMessage(),
+                                    UserCoreErrorConstants.POST_LISTENER_TASKS_FAILED_MESSAGE), userID, deletedRoles,
+                            newRoles);
+                    return;
+                }
+            }
+        } catch (UserStoreException ex) {
+            handleUpdateRoleListOfUserFailureWithID(
+                    ErrorMessages.ERROR_CODE_ERROR_DURING_POST_UPDATE_ROLE_OF_USER.getCode(),
+                    String.format(ErrorMessages.ERROR_CODE_ERROR_DURING_POST_UPDATE_ROLE_OF_USER.getMessage(),
+                            ex.getMessage()), userID, deletedRoles, newRoles);
+            throw ex;
+        }
+    }
+
+    @Override
+    public final void updateUserListOfRoleWithID(final String roleName, final String[] deletedUserIDs,
+            final String[] newUserIDs) throws UserStoreException {
+        try {
+            AccessController.doPrivileged(new PrivilegedExceptionAction<String>() {
+                @Override
+                public String run() throws Exception {
+                    updateUserListOfRoleInternalWithID(roleName, deletedUserIDs, newUserIDs);
+                    return null;
+                }
+            });
+        } catch (PrivilegedActionException e) {
+            if (!(e.getException() instanceof UserStoreException)) {
+                handleUpdateRoleListOfUserFailureWithID(
+                        ErrorMessages.ERROR_CODE_ERROR_WHILE_UPDATING_ROLE_OF_USER.getCode(),
+                        String.format(ErrorMessages.ERROR_CODE_ERROR_WHILE_UPDATING_ROLE_OF_USER.getMessage(),
+                                e.getMessage()), roleName, deletedUserIDs, newUserIDs);
+            }
+            throw (UserStoreException) e.getException();
+        }
+    }
+
+    private final void updateUserListOfRoleInternalWithID(String roleName, String[] deletedUserIDs, String[] newUserIDs)
+            throws UserStoreException {
+
+        String primaryDomain = getMyDomainName();
+        if (primaryDomain != null) {
+            primaryDomain += CarbonConstants.DOMAIN_SEPARATOR;
+        }
+
+        if (deletedUserIDs != null && deletedUserIDs.length > 0) {
+            Arrays.sort(deletedUserIDs);
+            // Updating the user list of a role belong to the primary domain.
+            if (UserCoreUtil.isPrimaryAdminRole(roleName, realmConfig)) {
+                for (int i = 0; i < deletedUserIDs.length; i++) {
+                    if (deletedUserIDs[i].equalsIgnoreCase(realmConfig.getAdminUserName()) || (primaryDomain
+                            + deletedUserIDs[i]).equalsIgnoreCase(realmConfig.getAdminUserName())) {
+                        handleUpdateRoleListOfUserFailureWithID(
+                                ErrorMessages.ERROR_CODE_CANNOT_REMOVE_ADMIN_ROLE_FROM_ADMIN.getCode(),
+                                ErrorMessages.ERROR_CODE_CANNOT_REMOVE_ADMIN_ROLE_FROM_ADMIN.getMessage(), roleName,
+                                deletedUserIDs, newUserIDs);
+                        throw new UserStoreException(
+                                ErrorMessages.ERROR_CODE_CANNOT_REMOVE_ADMIN_ROLE_FROM_ADMIN.toString());
+                    }
+
+                }
+            }
+        }
+
+        UserStore userStore = getUserStore(roleName);
+
+        if (userStore.isHybridRole()) {
+            // Check whether someone is trying to update Everyone role.
+            if (UserCoreUtil.isEveryoneRole(roleName, realmConfig)) {
+                handleUpdateRoleListOfUserFailureWithID(ErrorMessages.ERROR_CODE_CANNOT_UPDATE_EVERYONE_ROLE.getCode(),
+                        ErrorMessages.ERROR_CODE_CANNOT_UPDATE_EVERYONE_ROLE.getMessage(), roleName, deletedUserIDs,
+                        newUserIDs);
+                throw new UserStoreException(ErrorMessages.ERROR_CODE_CANNOT_UPDATE_EVERYONE_ROLE.toString());
+            }
+
+            if (UserCoreConstants.INTERNAL_DOMAIN.equalsIgnoreCase(userStore.getDomainName())) {
+                hybridRoleManager.updateUserListOfHybridRole(userStore.getDomainFreeName(), deletedUserIDs, newUserIDs);
+                handleDoPostUpdateUserListOfRoleWithID(roleName, deletedUserIDs, newUserIDs, true);
+            } else {
+                hybridRoleManager
+                        .updateUserListOfHybridRole(userStore.getDomainAwareName(), deletedUserIDs, newUserIDs);
+                handleDoPostUpdateUserListOfRoleWithID(roleName, deletedUserIDs, newUserIDs, true);
+            }
+            clearUserRolesCacheByTenant(this.tenantId);
+            return;
+        }
+
+        if (userStore.isSystemStore()) {
+            systemUserRoleManager.updateUserListOfSystemRole(userStore.getDomainFreeName(),
+                    UserCoreUtil.removeDomainFromNames(deletedUserIDs), UserCoreUtil.removeDomainFromNames(newUserIDs));
+            handleDoPostUpdateUserListOfRoleWithID(roleName, deletedUserIDs, newUserIDs, true);
+            return;
+        }
+
+        if (userStore.isRecurssive()) {
+            ((AbstractUserStoreManager) userStore.getUserStoreManager())
+                    .updateUserListOfRoleWithID(userStore.getDomainFreeName(),
+                            UserCoreUtil.removeDomainFromNames(deletedUserIDs),
+                            UserCoreUtil.removeDomainFromNames(newUserIDs));
+            return;
+        }
+
+        // #################### Domain Name Free Zone Starts Here ################################
+        if (deletedUserIDs == null) {
+            deletedUserIDs = new String[0];
+        }
+        if (newUserIDs == null) {
+            newUserIDs = new String[0];
+        }
+        // #################### <Listeners> #####################################################
+        try {
+            for (UserOperationEventListener listener : UMListenerServiceComponent.getUserOperationEventListeners()) {
+                if (!((AbstractUserOperationEventListener) listener)
+                        .doPreUpdateUserListOfRoleWithID(roleName, deletedUserIDs, newUserIDs, this)) {
+                    handleUpdateRoleListOfUserFailureWithID(
+                            ErrorMessages.ERROR_CODE_ERROR_WHILE_PRE_UPDATE_USERS_OF_ROLE.getCode(),
+                            String.format(ErrorMessages.ERROR_CODE_ERROR_WHILE_PRE_UPDATE_USERS_OF_ROLE.getMessage(),
+                                    UserCoreErrorConstants.PRE_LISTENER_TASKS_FAILED_MESSAGE), roleName, deletedUserIDs,
+                            newUserIDs);
+                    return;
+                }
+            }
+        } catch (UserStoreException ex) {
+            handleUpdateRoleListOfUserFailureWithID(
+                    ErrorMessages.ERROR_CODE_ERROR_WHILE_PRE_UPDATE_USERS_OF_ROLE.getCode(),
+                    String.format(ErrorMessages.ERROR_CODE_ERROR_WHILE_PRE_UPDATE_USERS_OF_ROLE.getMessage(),
+                            ex.getMessage()), roleName, deletedUserIDs, newUserIDs);
+            throw ex;
+        }
+        // #################### </Listeners> #####################################################
+
+        if (deletedUserIDs.length > 0 || newUserIDs.length > 0) {
+            if (!isReadOnly() && writeGroupsEnabled) {
+                try {
+                    doUpdateUserListOfRoleWithID(userStore.getDomainFreeName(),
+                            UserCoreUtil.removeDomainFromNames(deletedUserIDs),
+                            UserCoreUtil.removeDomainFromNames(newUserIDs));
+                } catch (UserStoreException ex) {
+                    handleUpdateRoleListOfUserFailureWithID(
+                            ErrorMessages.ERROR_CODE_ERROR_DURING_UPDATE_USERS_OF_ROLE.getCode(),
+                            String.format(ErrorMessages.ERROR_CODE_ERROR_DURING_UPDATE_USERS_OF_ROLE.getMessage(),
+                                    ex.getMessage()), roleName, deletedUserIDs, newUserIDs);
+                    throw ex;
+                }
+            } else {
+                handleUpdateRoleListOfUserFailureWithID(ErrorMessages.ERROR_CODE_READONLY_USER_STORE.getCode(),
+                        ErrorMessages.ERROR_CODE_READONLY_USER_STORE.getMessage(), roleName, deletedUserIDs,
+                        newUserIDs);
+                throw new UserStoreException(ErrorMessages.ERROR_CODE_READONLY_USER_STORE.toString());
+            }
+        }
+
+        // need to clear user roles cache upon roles update
+        clearUserRolesCacheByTenant(this.tenantId);
+
+        // Call relevant listeners after updating user list of role.
+        handleDoPostUpdateUserListOfRole(roleName, deletedUserIDs, newUserIDs, false);
+    }
+
 }

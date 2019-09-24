@@ -32,6 +32,10 @@ public class JDBCRealmUtil {
             properties.put(JDBCRealmConstants.SELECT_USER, JDBCRealmConstants.SELECT_USER_SQL);
         }
 
+        if (!properties.containsKey(JDBCRealmConstants.SELECT_USER_ID)) {
+            properties.put(JDBCRealmConstants.SELECT_USER_ID, JDBCRealmConstants.SELECT_USER_ID_SQL);
+        }
+
         if (!properties.containsKey(JDBCRealmConstants.GET_ROLE_LIST)) {
             properties.put(JDBCRealmConstants.GET_ROLE_LIST, JDBCRealmConstants.GET_ROLE_LIST_SQL);
         }

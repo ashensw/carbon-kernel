@@ -28,11 +28,14 @@ import org.wso2.carbon.user.api.Property;
 import org.wso2.carbon.user.api.RealmConfiguration;
 import org.wso2.carbon.user.core.UserCoreConstants;
 import org.wso2.carbon.user.core.UserRealm;
+import org.wso2.carbon.user.core.UserStoreConfigConstants;
 import org.wso2.carbon.user.core.UserStoreException;
 import org.wso2.carbon.user.core.claim.ClaimManager;
 import org.wso2.carbon.user.core.common.AbstractUserStoreManager;
 import org.wso2.carbon.user.core.common.PaginatedSearchResult;
 import org.wso2.carbon.user.core.common.RoleContext;
+import org.wso2.carbon.user.core.common.User;
+import org.wso2.carbon.user.core.constants.UserCoreClaimConstants;
 import org.wso2.carbon.user.core.dto.RoleDTO;
 import org.wso2.carbon.user.core.hybrid.HybridJDBCConstants;
 import org.wso2.carbon.user.core.jdbc.caseinsensitive.JDBCCaseInsensitiveConstants;
@@ -447,6 +450,131 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
 
     }
 
+    /**
+     *
+     */
+    public User[] doListUsersWithID(String filter, int maxItemLimit) throws UserStoreException {
+
+        User[] users = null;
+        Connection dbConnection = null;
+        String sqlStmt = null;
+        PreparedStatement prepStmt = null;
+        ResultSet rs = null;
+
+        if (maxItemLimit == 0) {
+            return new User[0];
+        }
+
+        int givenMax;
+
+        int searchTime;
+
+        try {
+            givenMax = Integer.parseInt(realmConfig
+                    .getUserStoreProperty(UserCoreConstants.RealmConfig.PROPERTY_MAX_USER_LIST));
+        } catch (Exception e) {
+            givenMax = UserCoreConstants.MAX_USER_ROLE_LIST;
+        }
+
+        try {
+            searchTime = Integer.parseInt(realmConfig
+                    .getUserStoreProperty(UserCoreConstants.RealmConfig.PROPERTY_MAX_SEARCH_TIME));
+        } catch (Exception e) {
+            searchTime = UserCoreConstants.MAX_SEARCH_TIME;
+        }
+
+        if (maxItemLimit < 0 || maxItemLimit > givenMax) {
+            maxItemLimit = givenMax;
+        }
+
+        try {
+
+            if (filter != null && filter.trim().length() != 0) {
+                filter = filter.trim();
+                filter = filter.replace("*", "%");
+                filter = filter.replace("?", "_");
+            } else {
+                filter = "%";
+            }
+
+            List<User> userList = new ArrayList<>();
+
+            dbConnection = getDBConnection();
+
+            if (dbConnection == null) {
+                throw new UserStoreException("null connection");
+            }
+
+            //TODO: change the query to get the userID from username search
+            if (isCaseSensitiveUsername()) {
+                sqlStmt = realmConfig.getUserStoreProperty(JDBCRealmConstants.GET_USER_FILTER);
+            } else {
+                sqlStmt = realmConfig.getUserStoreProperty(JDBCCaseInsensitiveConstants.GET_USER_FILTER_CASE_INSENSITIVE);
+            }
+
+            prepStmt = dbConnection.prepareStatement(sqlStmt);
+            prepStmt.setString(1, filter);
+            if (sqlStmt.contains(UserCoreConstants.UM_TENANT_COLUMN)) {
+                prepStmt.setInt(2, tenantId);
+            }
+            prepStmt.setMaxRows(maxItemLimit);
+            try {
+                prepStmt.setQueryTimeout(searchTime);
+            } catch (Exception e) {
+                // this can be ignored since timeout method is not implemented
+                log.debug(e);
+            }
+
+            try {
+                rs = prepStmt.executeQuery();
+            } catch (SQLException e) {
+                if (e instanceof SQLTimeoutException) {
+                    log.error("The cause might be a time out. Hence ignored", e);
+                    return users;
+                }
+                String errorMessage =
+                        "Error while fetching users according to filter : " + filter + " & max Item limit " +
+                                ": " + maxItemLimit;
+                if (log.isDebugEnabled()) {
+                    log.debug(errorMessage, e);
+                }
+                throw new UserStoreException(errorMessage, e);
+            }
+
+            while (rs.next()) {
+
+                String userID = rs.getString(1);
+                if (CarbonConstants.REGISTRY_ANONNYMOUS_USERNAME.equals(userID)) {
+                    continue;
+                }
+                // append the domain if exist
+                String domain = realmConfig
+                        .getUserStoreProperty(UserCoreConstants.RealmConfig.PROPERTY_DOMAIN_NAME);
+                userID = UserCoreUtil.addDomainToName(userID, domain);
+                User user = new User();
+                user.setUserID(userID);
+                userList.add(user);
+            }
+            rs.close();
+
+            if (userList.size() > 0) {
+                users = userList.toArray(User[]::new);
+            }
+
+        } catch (SQLException e) {
+            String msg = "Error occurred while retrieving users for filter : " + filter + " & max Item limit : " +
+                    maxItemLimit;
+            if (log.isDebugEnabled()) {
+                log.debug(msg, e);
+            }
+            throw new UserStoreException(msg, e);
+        } finally {
+            DatabaseUtil.closeAllConnections(dbConnection, rs, prepStmt);
+        }
+        return users;
+
+    }
+
 
     @Override
     public boolean doCheckIsUserInRole(String userName, String roleName) throws UserStoreException {
@@ -684,8 +812,28 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
         return roles;
     }
 
+    @Override
+    public User[] doGetUserListOfRoleWithID(String roleName, String filter) throws UserStoreException {
 
+        return UserCoreUtil.getUserList(doGetUserListOfRoleInternal(roleName, filter)).toArray(User[]::new);
+    }
+
+    @Override
     public String[] doGetUserListOfRole(String roleName, String filter) throws UserStoreException {
+
+        if (UserCoreUtil.isUniqueUserIDFeatureEnabled()) {
+            String[] userIDs = doGetUserListOfRoleInternal(roleName, filter);
+            List<String> userNames = new ArrayList<>();
+            for (String userID : userIDs) {
+                userNames.add(getUserClaimValueWithID(userID, UserCoreClaimConstants.USERNAME_CLAIM_URI, null));
+            }
+            return userNames.toArray(String[]::new);
+        } else {
+            return doGetUserListOfRoleInternal(roleName, filter);
+        }
+    }
+
+    private String[] doGetUserListOfRoleInternal(String roleName, String filter) throws UserStoreException {
 
         RoleContext roleContext = createRoleContext(roleName);
         return getUserListOfJDBCRole(roleContext, filter);
@@ -780,10 +928,23 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
         return names;
     }
 
-    /**
-     *
-     */
+    @Override
+    public String[] getProfileNamesWithID(String userID) throws UserStoreException {
+
+        return getProfileNamesInternal(userID);
+    }
+
+    @Override
     public String[] getProfileNames(String userName) throws UserStoreException {
+
+        // Get the relevant userID for the given username.
+        if (UserCoreUtil.isUniqueUserIDFeatureEnabled()) {
+            userName = getUserID(UserCoreClaimConstants.USERNAME_CLAIM_URI, userName, null);
+        }
+        return getProfileNamesInternal(userName);
+    }
+
+    private String[] getProfileNamesInternal(String userName) throws UserStoreException {
 
         userName = UserCoreUtil.removeDomainFromName(userName);
         String sqlStmt;
@@ -914,7 +1075,27 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
     /**
      *
      */
-    public int getTenantId(String username) throws UserStoreException {
+    public int getTenantIdWithID(String userID) throws UserStoreException {
+
+        return getTenantIdInternal(userID);
+    }
+
+    /**
+     *
+     */
+    public int getTenantId(String userName) throws UserStoreException {
+
+        // Get the relevant userID for the given username.
+        if (UserCoreUtil.isUniqueUserIDFeatureEnabled()) {
+            userName = getUserID(UserCoreClaimConstants.USERNAME_CLAIM_URI, userName, null);
+        }
+        return getTenantIdInternal(userName);
+    }
+
+    /**
+     *
+     */
+    public int getTenantIdInternal(String username) throws UserStoreException {
         if (this.tenantId != MultitenantConstants.SUPER_TENANT_ID) {
             throw new UserStoreException("Not allowed to perform this operation");
         }
@@ -1128,10 +1309,20 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
         }
     }
 
-    /**
-     *
-     */
+    @Override
+    public boolean doCheckExistingUserWithID(String userID) throws UserStoreException {
+
+        return doCheckExistingUserInternal(userID);
+    }
+
+    @Override
     public boolean doCheckExistingUser(String userName) throws UserStoreException {
+
+        return doCheckExistingUserInternal(userName);
+    }
+
+
+    private boolean doCheckExistingUserInternal(String userName) throws UserStoreException {
 
         String sqlStmt;
         if (isCaseSensitiveUsername()) {
@@ -1167,6 +1358,15 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
 
         return isExisting;
     }
+
+//    public User doAuthenticate(String preferredUserNameProperty, String preferredUserNameValue, Object credential,
+//            String profileName) throws UserStoreException {
+//        if(true) {
+//
+//        } else {
+//            doAuthenticate(preferredUserNameValue, credential);
+//        }
+//    }
 
     /**
      *
@@ -1262,6 +1462,108 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
         return isAuthed;
     }
 
+    @Override
+    public User doAuthenticate(String preferredUserNameProperty, String preferredUserNameValue, Object credential,
+            String profileName) throws UserStoreException {
+        User user = null;
+        if (!checkUserNameValid(preferredUserNameValue)) {
+            if (log.isDebugEnabled()) {
+                log.debug("Username validation failed");
+            }
+            return null;
+        }
+
+        if (!checkUserPasswordValid(credential)) {
+            if (log.isDebugEnabled()) {
+                log.debug("Password validation failed");
+            }
+            return null;
+        }
+
+        if (UserCoreUtil.isRegistryAnnonymousUser(preferredUserNameValue)) {
+            log.error("Anonymous user trying to login");
+            return null;
+        }
+
+        Connection dbConnection = null;
+        ResultSet rs = null;
+        PreparedStatement prepStmt = null;
+        String sqlstmt = null;
+        String password = null;
+        boolean isAuthed = false;
+
+        try {
+            dbConnection = getDBConnection();
+            dbConnection.setAutoCommit(false);
+
+            sqlstmt = realmConfig.getUserStoreProperty(JDBCRealmConstants.SELECT_USER_ID);
+
+            if (log.isDebugEnabled()) {
+                log.debug(sqlstmt);
+            }
+
+            prepStmt = dbConnection.prepareStatement(sqlstmt);
+            prepStmt.setString(1, preferredUserNameProperty);
+            prepStmt.setString(2, preferredUserNameValue);
+            prepStmt.setString(3, profileName);
+            if (sqlstmt.contains(UserCoreConstants.UM_TENANT_COLUMN)) {
+                prepStmt.setInt(4, tenantId);
+                prepStmt.setInt(5, tenantId);
+            }
+
+            rs = prepStmt.executeQuery();
+
+            if (rs.next() && !isAuthed) {
+                String userID = rs.getString(1);
+                String storedPassword = rs.getString(2);
+                String saltValue = null;
+                if ("true".equalsIgnoreCase(
+                        realmConfig.getUserStoreProperty(JDBCRealmConstants.STORE_SALTED_PASSWORDS))) {
+                    saltValue = rs.getString(3);
+                }
+
+                boolean requireChange = rs.getBoolean(4);
+                Timestamp changedTime = rs.getTimestamp(5);
+
+                GregorianCalendar gc = new GregorianCalendar();
+                gc.add(GregorianCalendar.HOUR, -24);
+                Date date = gc.getTime();
+
+                if (requireChange && changedTime.before(date)) {
+                    isAuthed = false;
+                } else {
+                    password = this.preparePassword(credential, saltValue);
+                    if ((storedPassword != null) && (storedPassword.equals(password))) {
+                        isAuthed = true;
+                        user = new User();
+                        user.setPreferredUsername(preferredUserNameValue);
+                        user.setUserID(userID);
+                        user.setTenantDomain(CarbonContext.getThreadLocalCarbonContext().getTenantDomain());
+                        user.setUsername(
+                                getUserClaimValue(userID, UserCoreClaimConstants.USERNAME_CLAIM_URI, profileName));
+                        //user.setUserStoreDomain();
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            String msg =
+                    "Error occurred while retrieving user authentication info for user : " + preferredUserNameValue;
+            if (log.isDebugEnabled()) {
+                log.debug(msg, e);
+            }
+            throw new UserStoreException("Authentication Failure", e);
+        } finally {
+            DatabaseUtil.closeAllConnections(dbConnection, rs, prepStmt);
+        }
+
+        if (log.isDebugEnabled()) {
+            log.debug("User " + preferredUserNameValue + " login attempt. Login success :: " + isAuthed);
+        }
+
+        return user;
+
+    }
+
     /**
      *
      */
@@ -1273,15 +1575,20 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
         return false;
     }
 
-    /**
-     *
-     */
-    public void doAddUser(String userName, Object credential, String[] roleList,
-                          Map<String, String> claims, String profileName, boolean requirePasswordChange)
-            throws UserStoreException {
+    @Override
+    public void doAddUser(String userName, Object credential, String[] roleList, Map<String, String> claims,
+            String profileName, boolean requirePasswordChange) throws UserStoreException {
 
-        // persist the user info. in the database.
-        persistUser(userName, credential, roleList, claims, profileName, requirePasswordChange);
+        // Persist the user info. in the database.
+        if (UserCoreUtil.isUniqueUserIDFeatureEnabled()) {
+            // Assigning unique user ID of the user as the username in the system.
+            String userID = UserCoreUtil.getUserID();
+            // Assign preferredUsername as the username claim.
+            claims.put(UserCoreClaimConstants.USERNAME_CLAIM_URI, userName);
+            persistUser(userID, credential, roleList, claims, profileName, requirePasswordChange);
+        } else {
+            persistUser(userName, credential, roleList, claims, profileName, requirePasswordChange);
+        }
 
     }
 
@@ -1675,10 +1982,23 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
         }
     }
 
+    public void doDeleteUserWithID(String userID) throws UserStoreException {
+        doDeleteUserInternal(userID);
+    }
+
+    public void doDeleteUser(String userName) throws UserStoreException {
+
+        if (UserCoreUtil.isUniqueUserIDFeatureEnabled()) {
+            doDeleteUserInternal(getUserID(UserCoreClaimConstants.USERNAME_CLAIM_URI, userName, null));
+        } else {
+            doDeleteUserInternal(userName);
+        }
+
+    }
     /**
      *
      */
-    public void doDeleteUser(String userName) throws UserStoreException {
+    public void doDeleteUserInternal(String userName) throws UserStoreException {
 
         String sqlStmt1;
         if (isCaseSensitiveUsername()) {
@@ -1738,10 +2058,24 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
         }
     }
 
+    @Override
+    public void doUpdateUserListOfRole(String roleName, String[] deletedUsers, String[] newUsers)
+            throws UserStoreException {
+
+        doUpdateUserListOfRoleInternal(roleName, deletedUsers, newUsers);
+    }
+
+    @Override
+    public void doUpdateUserListOfRoleWithID(String roleName, String[] deletedUserIDs, String[] newUserIDs)
+            throws UserStoreException {
+
+        doUpdateUserListOfRoleInternal(roleName, deletedUserIDs, newUserIDs);
+    }
+
     /**
      *
      */
-    public void doUpdateUserListOfRole(String roleName, String deletedUsers[], String[] newUsers)
+    private void doUpdateUserListOfRoleInternal(String roleName, String deletedUsers[], String[] newUsers)
             throws UserStoreException {
 
         JDBCRoleContext ctx = (JDBCRoleContext) createRoleContext(roleName);
@@ -1904,10 +2238,24 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
 
     }
 
+    @Override
+    public void doUpdateRoleListOfUser(String userName, String[] deletedRoles, String[] newRoles)
+            throws UserStoreException {
+
+        doUpdateRoleListOfUserInternal(userName, deletedRoles, newRoles);
+    }
+
+    @Override
+    public void doUpdateRoleListOfUserWithID(String userID, String[] deletedRoles, String[] newRoles)
+            throws UserStoreException {
+
+        doUpdateRoleListOfUserInternal(userID, deletedRoles, newRoles);
+    }
+
     /**
      *
      */
-    public void doUpdateRoleListOfUser(String userName, String[] deletedRoles, String[] newRoles)
+    private void doUpdateRoleListOfUserInternal(String userName, String[] deletedRoles, String[] newRoles)
             throws UserStoreException {
 
         Connection dbConnection = null;
@@ -2072,10 +2420,29 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
 
     }
 
+    @Override
+    public void doSetUserClaimValueWithID(String userID, String claimURI, String claimValue, String profileName)
+            throws UserStoreException {
+
+        doSetUserClaimValueInternal(userID, claimURI, claimValue, profileName);
+    }
+
+    @Override
+    public void doSetUserClaimValue(String userName, String claimURI, String claimValue, String profileName)
+            throws UserStoreException {
+
+        if (UserCoreUtil.isUniqueUserIDFeatureEnabled()) {
+            doSetUserClaimValueInternal(getUserID(UserCoreClaimConstants.USERNAME_CLAIM_URI, userName, profileName),
+                    claimURI, claimValue, profileName);
+        } else {
+            doSetUserClaimValueInternal(userName, claimURI, claimValue, profileName);
+        }
+    }
+
     /**
      *
      */
-    public void doSetUserClaimValue(String userName, String claimURI, String claimValue,
+    public void doSetUserClaimValueInternal(String userName, String claimURI, String claimValue,
                                     String profileName) throws UserStoreException {
         if (profileName == null) {
             profileName = UserCoreConstants.DEFAULT_PROFILE;
@@ -2124,10 +2491,29 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
         }
     }
 
+    @Override
+    public void doSetUserClaimValuesWithID(String userID, Map<String, String> claims, String profileName)
+            throws UserStoreException {
+
+        doSetUserClaimValuesInternal(userID, claims, profileName);
+    }
+
+    @Override
+    public void doSetUserClaimValues(String userName, Map<String, String> claims, String profileName)
+            throws UserStoreException {
+
+        if (UserCoreUtil.isUniqueUserIDFeatureEnabled()) {
+            doSetUserClaimValuesInternal(getUserID(UserCoreClaimConstants.USERNAME_CLAIM_URI, userName, profileName),
+                    claims, profileName);
+        } else {
+            doSetUserClaimValuesInternal(userName, claims, profileName);
+        }
+    }
+
     /**
      *
      */
-    public void doSetUserClaimValues(String userName, Map<String, String> claims, String profileName)
+    private void doSetUserClaimValuesInternal(String userName, Map<String, String> claims, String profileName)
             throws UserStoreException {
         Connection dbConnection = null;
         if (profileName == null) {
@@ -2202,10 +2588,17 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
         }
     }
 
-    /**
-     *
-     */
-    public void doDeleteUserClaimValue(String userName, String claimURI, String profileName)
+    @Override
+    public void doDeleteUserClaimValue(String userName, String claimURI, String profileName) throws UserStoreException {
+        doDeleteUserClaimValueInternal(userName, claimURI, profileName);
+    }
+
+    @Override
+    public void doDeleteUserClaimValueWithID(String userID, String claimURI, String profileName) throws UserStoreException {
+        doDeleteUserClaimValueInternal(userID, claimURI, profileName);
+    }
+
+    private void doDeleteUserClaimValueInternal(String userName, String claimURI, String profileName)
             throws UserStoreException {
         Connection dbConnection = null;
         if (profileName == null) {
@@ -2245,7 +2638,22 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
     /**
      *
      */
+    @Override
+    public void doDeleteUserClaimValuesWithID(String userID, String[] claims, String profileName)
+            throws UserStoreException {
+        doDeleteUserClaimValuesInternal(userID, claims, profileName);
+    }
+
+    /**
+     *
+     */
+    @Override
     public void doDeleteUserClaimValues(String userName, String[] claims, String profileName)
+            throws UserStoreException {
+        doDeleteUserClaimValuesInternal(userName, claims, profileName);
+    }
+
+    private void doDeleteUserClaimValuesInternal(String userName, String[] claims, String profileName)
             throws UserStoreException {
         Connection dbConnection = null;
         if (profileName == null) {
@@ -2292,7 +2700,24 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
     /**
      *
      */
-    public void doUpdateCredentialByAdmin(String userName, Object newCredential)
+    public void doUpdateCredentialWithID(String userID, Object newCredential, Object oldCredential)
+            throws UserStoreException {
+        // no need to check old password here because we already authenticate in super class
+        this.doUpdateCredentialByAdminWithID(userID, newCredential);
+    }
+
+    public void doUpdateCredentialByAdmin(String userName, Object newCredential) throws UserStoreException {
+        doUpdateCredentialByAdminInternal(userName, newCredential);
+    }
+
+    public void doUpdateCredentialByAdminWithID(String userID, Object newCredential) throws UserStoreException {
+        doUpdateCredentialByAdminInternal(userID, newCredential);
+    }
+
+    /**
+     *
+     */
+    private void doUpdateCredentialByAdminInternal(String userName, Object newCredential)
             throws UserStoreException {
 
         String sqlStmt;
@@ -2326,10 +2751,19 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
         }
     }
 
-    /**
-     *
-     */
+    @Override
+    public Date getPasswordExpirationTimeWithID(String userID) throws UserStoreException {
+
+        return getPasswordExpirationTimeInternal(userID);
+    }
+
+    @Override
     public Date getPasswordExpirationTime(String userName) throws UserStoreException {
+
+        return getPasswordExpirationTimeInternal(userName);
+    }
+
+    private Date getPasswordExpirationTimeInternal(String userName) throws UserStoreException {
 
         if (userName != null && userName.contains(CarbonConstants.DOMAIN_SEPARATOR)) {
             return super.getPasswordExpirationTime(userName);

@@ -22,9 +22,11 @@ package org.wso2.carbon.user.core.common;
 import org.wso2.carbon.user.api.Permission;
 import org.wso2.carbon.user.core.UserStoreException;
 import org.wso2.carbon.user.core.UserStoreManager;
+import org.wso2.carbon.user.core.listener.UniqueIDUserOperationEventListener;
 import org.wso2.carbon.user.core.listener.UserOperationEventListener;
 import org.wso2.carbon.user.core.model.Condition;
 import org.wso2.carbon.user.core.model.UserClaimSearchEntry;
+import org.wso2.carbon.user.core.util.UserCoreUtil;
 
 import java.util.List;
 import java.util.Map;
@@ -32,7 +34,7 @@ import java.util.Map;
 /**
  *
  */
-public class AbstractUserOperationEventListener implements UserOperationEventListener {
+public class AbstractUserOperationEventListener implements UniqueIDUserOperationEventListener {
 
     @Override
     public int getExecutionOrderId() {
@@ -387,9 +389,27 @@ public class AbstractUserOperationEventListener implements UserOperationEventLis
         return true;
     }
 
+    public boolean doPreGetUserClaimValueWithID(String userID, String claim, String profileName,
+            UserStoreManager userStoreManager) throws UserStoreException {
+
+        if (UserCoreUtil.isNewEventListenersEnabled()) {
+            return true;
+        }
+        return doPreGetUserClaimValue(userID, claim, profileName, userStoreManager);
+    }
+
     public boolean doPreGetUserClaimValues(String userName, String[] claims,
-                                           String profileName, Map<String, String> claimMap, UserStoreManager storeManager) throws UserStoreException {
+                                           String profileName, Map<String, String> claimMap, UserStoreManager userStoreManager) throws UserStoreException {
         return true;
+    }
+
+    public boolean doPreGetUserClaimValuesWithID(String userID, String[] claims, String profileName,
+            Map<String, String> claimMap, UserStoreManager userStoreManager) throws UserStoreException {
+
+        if (UserCoreUtil.isNewEventListenersEnabled()) {
+            return true;
+        }
+        return doPreGetUserClaimValues(userID, claims, profileName, claimMap, userStoreManager);
     }
 
     public boolean doPostGetUserClaimValue(String userName, String claim, List<String> claimValue,
@@ -397,9 +417,27 @@ public class AbstractUserOperationEventListener implements UserOperationEventLis
         return true;
     }
 
+    public boolean doPostGetUserClaimValueWithID(String userID, String claim, List<String> claimValue,
+            String profileName, UserStoreManager userStoreManager) throws UserStoreException {
+
+        if (UserCoreUtil.isNewEventListenersEnabled()) {
+            return true;
+        }
+        return doPostGetUserClaimValue(userID, claim, claimValue, profileName, userStoreManager);
+    }
+
     public boolean doPostGetUserClaimValues(String userName, String[] claims,
                                             String profileName, Map<String, String> claimMap, UserStoreManager storeManager) throws UserStoreException {
         return true;
+    }
+
+    public boolean doPostGetUserClaimValuesWithID(String userID, String[] claims, String profileName,
+            Map<String, String> claimMap, UserStoreManager userStoreManager) throws UserStoreException {
+
+        if (UserCoreUtil.isNewEventListenersEnabled()) {
+            return true;
+        }
+        return doPostGetUserClaimValues(userID, claims, profileName, claimMap, userStoreManager);
     }
 
     /**
@@ -466,6 +504,26 @@ public class AbstractUserOperationEventListener implements UserOperationEventLis
     public boolean doPostGetUserList(String claimUri, String claimValue, final List<String> returnValues,
                                      UserStoreManager userStoreManager) throws UserStoreException {
         return true;
+    }
+
+    /**
+     * Post listener for the get user list method.
+     *
+     * @param claimUri         Claim URI.
+     * @param claimValue       Value of the given claim URI.
+     * @param returnValues     Values to be returned.
+     * @param userStoreManager User store manager.
+     * @return False if error.
+     * @throws UserStoreException User Store Exception.
+     */
+    public boolean doPostGetUserListWithID(String claimUri, String claimValue, final User[] returnValues,
+            UserStoreManager userStoreManager) throws UserStoreException {
+
+        if (UserCoreUtil.isNewEventListenersEnabled()) {
+            return true;
+        }
+        List<String> userNamesList = UserCoreUtil.getUserNamesList(returnValues);
+        return doPostGetUserList(claimUri, claimValue, userNamesList, userStoreManager);
     }
 
     /**
@@ -568,6 +626,25 @@ public class AbstractUserOperationEventListener implements UserOperationEventLis
     }
 
     /**
+     * Any additional tasks that need to be done after getting user list a role.
+     *
+     * @param roleName         Name of the role.
+     * @param userList         List of users.
+     * @param userStoreManager User Store Manager.
+     * @return true if handling succeeds, otherwise false.
+     * @throws UserStoreException UserStore Exception.
+     */
+    public boolean doPostGetUserListOfRoleWithID(String roleName, User[] userList, UserStoreManager userStoreManager)
+            throws UserStoreException {
+
+        if (UserCoreUtil.isNewEventListenersEnabled()) {
+            return true;
+        }
+        List<String> userNamesList = UserCoreUtil.getUserNamesList(userList);
+        return doPostGetUserListOfRole(roleName, userNamesList.toArray(String[]::new), userStoreManager);
+    }
+
+    /**
      * Any additional tasks that need to be done after updating permissions of a role.
      *
      * @param roleName         Name of the role.
@@ -610,5 +687,243 @@ public class AbstractUserOperationEventListener implements UserOperationEventLis
             UserClaimSearchEntry[] userClaimSearchEntries) throws UserStoreException {
 
         return true;
+    }
+
+    @Override
+    public boolean doPreAuthenticateWithID(String userID, Object credential, UserStoreManager userStoreManager)
+            throws UserStoreException {
+
+        if (UserCoreUtil.isNewEventListenersEnabled()) {
+            return true;
+        }
+        return doPreAuthenticate(userID, credential, userStoreManager);
+    }
+
+    @Override
+    public boolean doPostAuthenticateWithID(String userID, boolean authenticated, UserStoreManager userStoreManager)
+            throws UserStoreException {
+
+        if (UserCoreUtil.isNewEventListenersEnabled()) {
+            return true;
+        }
+        return doPostAuthenticate(userID, authenticated, userStoreManager);
+    }
+
+    @Override
+    public boolean doPreAddUserWithID(String userID, Object credential, String[] roleList, Map<String, String> claims,
+            String profile, UserStoreManager userStoreManager) throws UserStoreException {
+
+        if (UserCoreUtil.isNewEventListenersEnabled()) {
+            return true;
+        }
+        return doPreAddUser(userID, credential, roleList, claims, profile, userStoreManager);
+    }
+
+    @Override
+    public boolean doPostAddUserWithID(String userID, Object credential, String[] roleList, Map<String, String> claims,
+            String profile, UserStoreManager userStoreManager) throws UserStoreException {
+
+        if (UserCoreUtil.isNewEventListenersEnabled()) {
+            return true;
+        }
+        return doPostAddUser(userID, credential, roleList, claims, profile, userStoreManager);
+    }
+
+    @Override
+    public boolean doPreUpdateCredentialWithID(String userID, Object newCredential, Object oldCredential,
+            UserStoreManager userStoreManager) throws UserStoreException {
+
+        if (UserCoreUtil.isNewEventListenersEnabled()) {
+            return true;
+        }
+        return doPreUpdateCredential(userID, newCredential, oldCredential, userStoreManager);
+    }
+
+    @Override
+    public boolean doPostUpdateCredentialWithID(String userID, Object credential, UserStoreManager userStoreManager)
+            throws UserStoreException {
+
+        if (UserCoreUtil.isNewEventListenersEnabled()) {
+            return true;
+        }
+        return doPostUpdateCredential(userID, credential, userStoreManager);
+    }
+
+    @Override
+    public boolean doPreUpdateCredentialByAdminWithID(String userID, Object newCredential,
+            UserStoreManager userStoreManager) throws UserStoreException {
+
+        if (UserCoreUtil.isNewEventListenersEnabled()) {
+            return true;
+        }
+        return doPreUpdateCredentialByAdmin(userID, newCredential, userStoreManager);
+    }
+
+    @Override
+    public boolean doPostUpdateCredentialByAdminWithID(String userID, Object credential,
+            UserStoreManager userStoreManager) throws UserStoreException {
+
+        if (UserCoreUtil.isNewEventListenersEnabled()) {
+            return true;
+        }
+        return doPostUpdateCredentialByAdmin(userID, credential, userStoreManager);
+    }
+
+    @Override
+    public boolean doPreDeleteUserWithID(String userID, UserStoreManager userStoreManager) throws UserStoreException {
+
+        if (UserCoreUtil.isNewEventListenersEnabled()) {
+            return true;
+        }
+        return doPreDeleteUser(userID, userStoreManager);
+    }
+
+    @Override
+    public boolean doPostDeleteUserWithID(String userID, UserStoreManager userStoreManager) throws UserStoreException {
+
+        if (UserCoreUtil.isNewEventListenersEnabled()) {
+            return true;
+        }
+        return doPostDeleteUser(userID, userStoreManager);
+    }
+
+    @Override
+    public boolean doPreSetUserClaimValueWithID(String userID, String claimURI, String claimValue, String profileName,
+            UserStoreManager userStoreManager) throws UserStoreException {
+
+        if (UserCoreUtil.isNewEventListenersEnabled()) {
+            return true;
+        }
+        return doPreSetUserClaimValue(userID, claimURI, claimValue, profileName, userStoreManager);
+    }
+
+    @Override
+    public boolean doPostSetUserClaimValueWithID(String userID, UserStoreManager userStoreManager)
+            throws UserStoreException {
+
+        if (UserCoreUtil.isNewEventListenersEnabled()) {
+            return true;
+        }
+        return doPostSetUserClaimValue(userID, userStoreManager);
+    }
+
+    @Override
+    public boolean doPreSetUserClaimValuesWithID(String userID, Map<String, String> claims, String profileName,
+            UserStoreManager userStoreManager) throws UserStoreException {
+
+        if (UserCoreUtil.isNewEventListenersEnabled()) {
+            return true;
+        }
+        return doPreSetUserClaimValues(userID, claims, profileName, userStoreManager);
+    }
+
+    @Override
+    public boolean doPostSetUserClaimValuesWithID(String userID, Map<String, String> claims, String profileName,
+            UserStoreManager userStoreManager) throws UserStoreException {
+
+        if (UserCoreUtil.isNewEventListenersEnabled()) {
+            return true;
+        }
+        return doPostSetUserClaimValues(userID, claims, profileName, userStoreManager);
+    }
+
+    @Override
+    public boolean doPreDeleteUserClaimValuesWithID(String userID, String[] claims, String profileName,
+            UserStoreManager userStoreManager) throws UserStoreException {
+
+        if (UserCoreUtil.isNewEventListenersEnabled()) {
+            return true;
+        }
+        return doPreDeleteUserClaimValues(userID, claims, profileName, userStoreManager);
+    }
+
+    @Override
+    public boolean doPostDeleteUserClaimValuesWithID(String userID, UserStoreManager userStoreManager)
+            throws UserStoreException {
+
+        if (UserCoreUtil.isNewEventListenersEnabled()) {
+            return true;
+        }
+        return doPostDeleteUserClaimValues(userID, userStoreManager);
+    }
+
+    @Override
+    public boolean doPreDeleteUserClaimValueWithID(String userID, String claimURI, String profileName,
+            UserStoreManager userStoreManager) throws UserStoreException {
+
+        if (UserCoreUtil.isNewEventListenersEnabled()) {
+            return true;
+        }
+        return doPreDeleteUserClaimValue(userID, claimURI, profileName, userStoreManager);
+    }
+
+    @Override
+    public boolean doPostDeleteUserClaimValueWithID(String userID, UserStoreManager userStoreManager)
+            throws UserStoreException {
+
+        if (UserCoreUtil.isNewEventListenersEnabled()) {
+            return true;
+        }
+        return doPostDeleteUserClaimValue(userID, userStoreManager);
+    }
+
+    @Override
+    public boolean doPreAddRoleWithID(String roleName, String[] userList, Permission[] permissions,
+            UserStoreManager userStoreManager) throws UserStoreException {
+
+        if (UserCoreUtil.isNewEventListenersEnabled()) {
+            return true;
+        }
+        return doPreAddRole(roleName, userList, permissions, userStoreManager);
+    }
+
+    @Override
+    public boolean doPostAddRoleWithID(String roleName, String[] userList, Permission[] permissions,
+            UserStoreManager userStoreManager) throws UserStoreException {
+
+        if (UserCoreUtil.isNewEventListenersEnabled()) {
+            return true;
+        }
+        return doPostAddRole(roleName, userList, permissions, userStoreManager);
+    }
+
+    @Override
+    public boolean doPreUpdateUserListOfRoleWithID(String roleName, String[] deletedUsers, String[] newUsers,
+            UserStoreManager userStoreManager) throws UserStoreException {
+
+        if (UserCoreUtil.isNewEventListenersEnabled()) {
+            return true;
+        }
+        return doPreUpdateUserListOfRole(roleName, deletedUsers, newUsers, userStoreManager);
+    }
+
+    @Override
+    public boolean doPostUpdateUserListOfRoleWithID(String roleName, String[] deletedUsers, String[] newUsers,
+            UserStoreManager userStoreManager) throws UserStoreException {
+
+        if (UserCoreUtil.isNewEventListenersEnabled()) {
+            return true;
+        }
+        return doPostUpdateUserListOfRole(roleName, deletedUsers, newUsers, userStoreManager);
+    }
+
+    @Override
+    public boolean doPreUpdateRoleListOfUserWithID(String userID, String[] deletedRoles, String[] newRoles,
+            UserStoreManager userStoreManager) throws UserStoreException {
+
+        if (UserCoreUtil.isNewEventListenersEnabled()) {
+            return true;
+        }
+        return doPreUpdateRoleListOfUser(userID, deletedRoles, newRoles, userStoreManager);
+    }
+
+    @Override
+    public boolean doPostUpdateRoleListOfUserWithID(String userID, String[] deletedRoles, String[] newRoles,
+            UserStoreManager userStoreManager) throws UserStoreException {
+
+        if (UserCoreUtil.isNewEventListenersEnabled()) {
+            return true;
+        }
+        return doPostUpdateRoleListOfUser(userID, deletedRoles, newRoles, userStoreManager);
     }
 }

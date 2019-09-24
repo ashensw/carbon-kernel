@@ -22,15 +22,17 @@ package org.wso2.carbon.user.core.common;
 import org.wso2.carbon.user.api.Permission;
 import org.wso2.carbon.user.core.UserStoreException;
 import org.wso2.carbon.user.core.UserStoreManager;
+import org.wso2.carbon.user.core.listener.UniqueIDUserManagementErrorEventListener;
 import org.wso2.carbon.user.core.listener.UserManagementErrorEventListener;
 import org.wso2.carbon.user.core.model.Condition;
+import org.wso2.carbon.user.core.util.UserCoreUtil;
 
 import java.util.Map;
 
 /**
  * Abstract implementation of UserManagementErrorEventListener.
  */
-public class AbstractUserManagementErrorListener implements UserManagementErrorEventListener {
+public class AbstractUserManagementErrorListener implements UniqueIDUserManagementErrorEventListener {
 
     @Override
     public int getExecutionOrderId() {
@@ -227,5 +229,172 @@ public class AbstractUserManagementErrorListener implements UserManagementErrorE
                                UserStoreManager userStoreManager) throws UserStoreException {
 
         return true;
+    }
+
+    @Override
+    public boolean onAuthenticateFailureWithID(String errorCode, String errorMessage, String userID, Object credential,
+            UserStoreManager userStoreManager) throws UserStoreException {
+
+        if (UserCoreUtil.isNewEventListenersEnabled()) {
+            return true;
+        }
+        return onAuthenticateFailure(errorCode, errorMessage, userID, credential, userStoreManager);
+    }
+
+    @Override
+    public boolean onAddUserFailureWithID(String errorCode, String errorMessage, String userID, Object credential,
+            String[] roleList, Map<String, String> claims, String profile, UserStoreManager userStoreManager)
+            throws UserStoreException {
+
+        if (UserCoreUtil.isNewEventListenersEnabled()) {
+            return true;
+        }
+        return onAddUserFailure(errorCode, errorMessage, userID, credential, roleList, claims, profile,
+                userStoreManager);
+    }
+
+    @Override
+    public boolean onUpdateCredentialFailureWithID(String errorCode, String errorMessage, String userID,
+            Object newCredential, Object oldCredential, UserStoreManager userStoreManager) throws UserStoreException {
+
+        if (UserCoreUtil.isNewEventListenersEnabled()) {
+            return true;
+        }
+        return onUpdateCredentialFailure(errorCode, errorMessage, userID, newCredential, oldCredential,
+                userStoreManager);
+    }
+
+    @Override
+    public boolean onUpdateCredentialByAdminFailureWithID(String errorCode, String errorMessage, String userID,
+            Object newCredential, UserStoreManager userStoreManager) throws UserStoreException {
+
+        if (UserCoreUtil.isNewEventListenersEnabled()) {
+            return true;
+        }
+        return onUpdateCredentialByAdminFailure(errorCode, errorMessage, userID, newCredential, userStoreManager);
+    }
+
+    @Override
+    public boolean onDeleteUserFailureWithID(String errorCode, String errorMessage, String userID,
+            UserStoreManager userStoreManager) throws UserStoreException {
+
+        if (UserCoreUtil.isNewEventListenersEnabled()) {
+            return true;
+        }
+        return onDeleteUserFailure(errorCode, errorMessage, userID, userStoreManager);
+    }
+
+    @Override
+    public boolean onSetUserClaimValueFailureWithID(String errorCode, String errorMessage, String userID,
+            String claimURI, String claimValue, String profileName, UserStoreManager userStoreManager)
+            throws UserStoreException {
+
+        if (UserCoreUtil.isNewEventListenersEnabled()) {
+            return true;
+        }
+        return onSetUserClaimValueFailure(errorCode, errorMessage, userID, claimURI, claimValue, profileName,
+                userStoreManager);
+    }
+
+    @Override
+    public boolean onSetUserClaimValuesFailureWithID(String errorCode, String errorMessage, String userID,
+            Map<String, String> claims, String profileName, UserStoreManager userStoreManager)
+            throws UserStoreException {
+
+        if (UserCoreUtil.isNewEventListenersEnabled()) {
+            return true;
+        }
+        return onSetUserClaimValuesFailure(errorCode, errorMessage, userID, claims, profileName, userStoreManager);
+    }
+
+    @Override
+    public boolean onDeleteUserClaimValuesFailureWithID(String errorCode, String errorMessage, String userID,
+            String[] claims, String profileName, UserStoreManager userStoreManager) throws UserStoreException {
+
+        if (UserCoreUtil.isNewEventListenersEnabled()) {
+            return true;
+        }
+        return onDeleteUserClaimValuesFailure(errorCode, errorMessage, userID, claims, profileName, userStoreManager);
+    }
+
+    @Override
+    public boolean onDeleteUserClaimValueFailureWithID(String errorCode, String errorMessage, String userID,
+            String claimURI, String profileName, UserStoreManager userStoreManager) throws UserStoreException {
+
+        if (UserCoreUtil.isNewEventListenersEnabled()) {
+            return true;
+        }
+        return onDeleteUserClaimValueFailure(errorCode, errorMessage, userID, claimURI, profileName, userStoreManager);
+    }
+
+    @Override
+    public boolean onAddRoleFailureWithID(String errorCode, String errorMessage, String roleName, String[] userList,
+            Permission[] permissions, UserStoreManager userStoreManager) throws UserStoreException {
+
+        if (UserCoreUtil.isNewEventListenersEnabled()) {
+            return true;
+        }
+        return onAddRoleFailure(errorCode, errorMessage, roleName, userList, permissions, userStoreManager);
+    }
+
+    @Override
+    public boolean onUpdateUserListOfRoleFailureWithID(String errorCode, String errorMessage, String roleName,
+            String[] deletedUsers, String[] newUsers, UserStoreManager userStoreManager) throws UserStoreException {
+
+        if (UserCoreUtil.isNewEventListenersEnabled()) {
+            return true;
+        }
+        return onUpdateUserListOfRoleFailure(errorCode, errorMessage, roleName, deletedUsers, newUsers,
+                userStoreManager);
+    }
+
+    @Override
+    public boolean onUpdateRoleListOfUserFailureWithID(String errorCode, String errorMessage, String userID,
+            String[] deletedRoles, String[] newRoles, UserStoreManager userStoreManager) throws UserStoreException {
+
+        if (UserCoreUtil.isNewEventListenersEnabled()) {
+            return true;
+        }
+        return onUpdateRoleListOfUserFailure(errorCode, errorMessage, userID, deletedRoles, newRoles, userStoreManager);
+    }
+
+    @Override
+    public boolean onGetUserClaimValueFailureWithID(String errorCode, String errorMessage, String userID, String claim,
+            String profileName, UserStoreManager userStoreManager) throws UserStoreException {
+
+        if (UserCoreUtil.isNewEventListenersEnabled()) {
+            return true;
+        }
+        return onGetUserClaimValueFailure(errorCode, errorMessage, userID, claim, profileName, userStoreManager);
+    }
+
+    @Override
+    public boolean onGetUserClaimValuesFailureWithID(String errorCode, String errorMessage, String userID,
+            String[] claims, String profileName, UserStoreManager userStoreManager) throws UserStoreException {
+
+        if (UserCoreUtil.isNewEventListenersEnabled()) {
+            return true;
+        }
+        return onGetUserClaimValuesFailure(errorCode, errorMessage, userID, claims, profileName, userStoreManager);
+    }
+
+    @Override
+    public boolean onGetUserListFailureWithID(String errorCode, String errorMessage, String claim, String claimValue,
+            String profileName, UserStoreManager userStoreManager) throws UserStoreException {
+
+        if (UserCoreUtil.isNewEventListenersEnabled()) {
+            return true;
+        }
+        return onGetUserListFailure(errorCode, errorMessage, claim, claimValue, profileName, userStoreManager);
+    }
+
+    @Override
+    public boolean onUpdatePermissionsOfRoleFailureWithID(String errorCode, String errorMessage, String roleName,
+            Permission[] permissions, UserStoreManager userStoreManager) throws UserStoreException {
+
+        if (UserCoreUtil.isNewEventListenersEnabled()) {
+            return true;
+        }
+        return onUpdatePermissionsOfRoleFailure(errorCode, errorMessage, roleName, permissions, userStoreManager);
     }
 }
