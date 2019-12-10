@@ -1181,8 +1181,10 @@ public abstract class AbstractUserStoreManager implements PaginatedUserStoreMana
                     AuthenticationResult authenticationResult = authenticateWithID(UserCoreClaimConstants
                                     .USERNAME_CLAIM_URI, userName,
                             credential, null, domainProvided);
-                    authenticated =  authenticationResult.getAuthenticationStatus() == AuthenticationResult
-                            .AuthenticationStatus.SUCCESS;
+                    if (authenticationResult.getAuthenticationStatus()
+                            == AuthenticationResult.AuthenticationStatus.SUCCESS) {
+                        authenticated = true;
+                    }
                 } else {
                     authenticated = abstractUserStoreManager.doAuthenticate(userName, credentialObj);
                 }
@@ -1223,8 +1225,10 @@ public abstract class AbstractUserStoreManager implements PaginatedUserStoreMana
                 if (userStoreManager.isUniqueUserIdEnabled()) {
                     AuthenticationResult authenticationResult = authenticateWithID(UserCoreClaimConstants
                             .USERNAME_CLAIM_URI, userName, credential, null, domainProvided);
-                    authenticated = authenticationResult.getAuthenticationStatus() == AuthenticationResult
-                            .AuthenticationStatus.SUCCESS;
+                    if (authenticationResult.getAuthenticationStatus()
+                            == AuthenticationResult.AuthenticationStatus.SUCCESS) {
+                        authenticated = true;
+                    }
                 } else {
                     authenticated = userStoreManager.authenticate(userName, credential, domainProvided);
                 }
